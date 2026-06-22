@@ -1,0 +1,18 @@
+# ============================================================
+# others 环境 - 连接团队共享远程服务器
+# 拉项目后只需把 spring.profiles.active 改为 others
+# 然后修改下面的 IP 地址为团队服务器地址即可
+# ============================================================
+
+spring:
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://192.168.x.x:3306/hospital_cloud_brain?useSSL=false&serverTimezone=Asia/Shanghai&characterEncoding=UTF-8&allowPublicKeyRetrieval=true
+    username: root
+    password: hospital2024
+  data:
+    redis:
+      host: 192.168.x.x
+      port: 6379
+      password: hospital2024
+      database: 0

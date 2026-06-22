@@ -1,0 +1,36 @@
+# ============================================================
+# 东软智慧云脑诊疗平台 - 主配置文件
+# ============================================================
+# 环境切换说明：
+#   master  → 本地开发(自己电脑跑Docker，MySQL/Redis用localhost)
+#   others  → 远程开发(连团队共享服务器，MySQL/Redis用IP+端口)
+#
+# 使用方式：
+#   1. 自己搭环境：spring.profiles.active: master
+#   2. 连别人的：   spring.profiles.active: others
+# ============================================================
+
+spring:
+  profiles:
+    active: master
+
+server:
+  port: 8080
+
+# ---------- MyBatis-Plus 公共配置 ----------
+mybatis-plus:
+  configuration:
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+    map-underscore-to-camel-case: true
+  global-config:
+    db-config:
+      id-type: auto
+      logic-delete-field: delmark
+      logic-delete-value: 0
+      logic-not-delete-value: 1
+
+# ---------- Knife4j 公共配置 ----------
+knife4j:
+  enable: true
+  setting:
+    language: zh_cn

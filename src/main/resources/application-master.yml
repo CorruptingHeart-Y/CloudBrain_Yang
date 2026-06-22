@@ -1,0 +1,17 @@
+# ============================================================
+# master 环境 - 本地 Docker (WSL) 开发
+# MySQL 和 Redis 都运行在本机 WSL 的 Docker 容器中
+# ============================================================
+
+spring:
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://localhost:3306/hospital_cloud_brain?useSSL=false&serverTimezone=Asia/Shanghai&characterEncoding=UTF-8&allowPublicKeyRetrieval=true
+    username: root
+    password: hospital2024
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      password: hospital2024
+      database: 0

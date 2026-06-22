@@ -1,0 +1,82 @@
+# ============================================================
+# 东软智慧云脑诊疗平台 - Docker Compose (WSL 环境)
+# ============================================================
+# 使用方式 (在 WSL 终端中执行):
+#   首次启动:  docker compose up -d
+#   查看状态:  docker compose ps
+#   查看日志:  docker compose logs -f mysql
+#   停止:      docker compose down
+#   重建(改配置后): docker compose up -d --build
+#   清空数据重建:   docker compose down -v && docker compose up -d
+#
+# 从 Windows 访问:
+#   MySQL:  localhost:3306
+#   Redis:  localhost:6379
+# ============================================================
+
+services:
+
+  # ======================== MySQL 8.0 ========================
+  mysql:
+    image: mysql:8.0
+    container_name: hospital-mysql
+    restart: unless-stopped
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: hospital2024
+      MYSQL_DATABASE: hospital_cloud_brain
+      MYSQL_CHARACTER_SET_SERVER: utf8mb4
+      MYSQL_COLLATION_SERVER: utf8mb4_general_ci
+      TZ: Asia/Shanghai
+    volumes:
+      # 数据持久化 — 容器删了数据不丢
+      - mysql-data:/var/lib/mysql
+      # 首次启动自动执行建库建表脚本
+      - ./mysql/init:/docker-entrypoint-initdb.d
+      # MySQL 配置
+      - ./mysql/my.cnf:/etc/mysql/conf.d/my.cnf
+    command: --default-authentication-plugin=mysql_native_password
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-phospital2024"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - hospital-net
+
+  # ======================== Redis 7 ========================
+  # 密码: hospital2024 (配置在 ./redis/redis.conf 的 requirepass 中)
+  # 连接: redis-cli -h localhost -p 6379 -a hospital2024
+  redis:
+    image: redis:7-alpine
+    container_name: hospital-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    command: redis-server /usr/local/etc/redis/redis.conf
+    volumes:
+      # 数据持久化
+      - redis-data:/data
+      # Redis 配置文件 (密码、持久化、内存限制等都在这里面)
+      - ./redis/redis.conf:/usr/local/etc/redis/redis.conf
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "hospital2024", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - hospital-net
+
+# ======================== 数据卷 ========================
+volumes:
+  mysql-data:
+    name: hospital-mysql-data
+  redis-data:
+    name: hospital-redis-data
+
+# ======================== 网络 ========================
+networks:
+  hospital-net:
+    name: hospital-net
+    driver: bridge
