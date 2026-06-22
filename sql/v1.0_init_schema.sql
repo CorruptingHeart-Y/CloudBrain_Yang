@@ -7,6 +7,8 @@
 CREATE DATABASE IF NOT EXISTS `yn` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
 USE `yn`;
 
+SET NAMES utf8mb4;
+
 -- (1) 科室表 (department)
 -- 功能说明：保存医生的出诊科室分类信息，支持编码唯一校验及名称检索。
 CREATE TABLE `department` (
