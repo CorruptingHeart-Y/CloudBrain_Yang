@@ -7,12 +7,12 @@
 spring:
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://192.168.x.x:3306/hospital_cloud_brain?useSSL=false&serverTimezone=Asia/Shanghai&characterEncoding=UTF-8&allowPublicKeyRetrieval=true
+    url: jdbc:mysql://100.85.88.97/hospital_cloud_brain?useSSL=false&serverTimezone=Asia/Shanghai&characterEncoding=UTF-8&allowPublicKeyRetrieval=true
     username: root
     password: hospital2024
   data:
     redis:
-      host: 192.168.x.x
+      host: 100.85.88.97
       port: 6379
       password: hospital2024
       database: 0

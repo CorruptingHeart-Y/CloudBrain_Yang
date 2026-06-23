@@ -53,3 +53,12 @@ __pycache__/
 # Docker data (local only)
 docker/mysql/data/
 docker/redis/data/
+
+
+#其他本地文件
+hospital_cloud_brain.sql
+hospital_cloud_brain_data.sql
+error.txt
+【FY26方案】东北大学-东软教育-云脑诊疗平台项目实训方案-v5.2.doc
+东软智慧云脑诊疗平台_数据库建表语句文档.docx
+技术栈.md
