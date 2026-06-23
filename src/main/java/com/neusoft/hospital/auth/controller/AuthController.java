@@ -8,6 +8,7 @@ import com.neusoft.hospital.auth.service.AuthService;
 import com.neusoft.hospital.common.Result;
 import com.neusoft.hospital.auth.annotation.Public;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -31,7 +32,8 @@ public class AuthController {
         return Result.ok(authService.login(request));
     }
 
-    @Operation(summary = "登出", description = "将当前 token 加入 Redis 黑名单，立即失效")
+    @Operation(summary = "登出", description = "将当前 token 加入 Redis 黑名单，立即失效",
+            security = @SecurityRequirement(name = "Bearer"))
     @PostMapping("/logout")
     public Result<Void> logout(HttpServletRequest request) {
         String token = extractToken(request);
@@ -41,13 +43,15 @@ public class AuthController {
         return Result.ok();
     }
 
-    @Operation(summary = "当前登录用户信息", description = "返回当前 JWT 对应的员工基本信息(含科室、挂号级别名称)")
+    @Operation(summary = "当前登录用户信息", description = "返回当前 JWT 对应的员工基本信息(含科室、挂号级别名称)",
+            security = @SecurityRequirement(name = "Bearer"))
     @GetMapping("/me")
     public Result<UserInfoResponse> me() {
         return Result.ok(authService.currentUserInfo());
     }
 
-    @Operation(summary = "修改密码", description = "校验原密码后改为新密码(BCrypt 加密)")
+    @Operation(summary = "修改密码", description = "校验原密码后改为新密码(BCrypt 加密)",
+            security = @SecurityRequirement(name = "Bearer"))
     @PutMapping("/password")
     public Result<Void> changePassword(@RequestBody @Valid ChangePasswordRequest request) {
         authService.changePassword(request);
