@@ -11,15 +11,7 @@ public enum ErrorCode {
     PARAM_ERROR(400, "参数错误"),
     NOT_FOUND(404, "资源不存在"),
     BUSINESS_ERROR(500, "业务异常"),
-    SYSTEM_ERROR(500, "系统内部错误"),
-
-    // 鉴权相关
-    UNAUTHORIZED(401, "未登录"),
-    BAD_CREDENTIALS(401, "工号或密码错误"),
-    TOKEN_EXPIRED(401, "令牌已过期，请重新登录"),
-    TOKEN_INVALID(401, "令牌无效"),
-    ACCOUNT_LOCKED(423, "账号已锁定，请稍后再试"),
-    PASSWORD_TOO_WEAK(400, "密码长度至少6位");
+    SYSTEM_ERROR(500, "系统内部错误");
 
     private final Integer code;
     private final String message;
