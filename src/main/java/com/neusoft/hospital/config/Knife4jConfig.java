@@ -32,6 +32,14 @@ public class Knife4jConfig {
     }
 
     @Bean
+    public GroupedOpenApi authApi() {
+        return GroupedOpenApi.builder()
+                .group("认证管理")
+                .pathsToMatch("/api/v1/auth/**")
+                .build();
+    }
+
+    @Bean
     public GroupedOpenApi dictApi() {
         return GroupedOpenApi.builder()
                 .group("字典管理")
