@@ -59,7 +59,7 @@ services:
       # 数据持久化
       - redis-data:/data
       # Redis 配置文件 (密码、持久化、内存限制等都在这里面)
-      - ./redis/redis.conf:/usr/local/etc/redis/redis.conf
+      - ./docker/redis/redis.conf:/usr/local/etc/redis/redis.conf
     healthcheck:
       test: ["CMD", "redis-cli", "-a", "hospital2024", "ping"]
       interval: 10s
