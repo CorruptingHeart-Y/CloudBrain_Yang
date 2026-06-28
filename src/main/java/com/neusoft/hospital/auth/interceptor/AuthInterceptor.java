@@ -70,9 +70,9 @@ public class AuthInterceptor implements HandlerInterceptor {
     }
 
     private String extractToken(HttpServletRequest request) {
-        String header = request.getHeader("Bearer");
-        if (header != null ) {
-            return header;
+        String header = request.getHeader("Authorization");
+        if (header != null && header.startsWith(BEARER_PREFIX)) {
+            return header.substring(BEARER_PREFIX.length());
         }
         return null;
     }
