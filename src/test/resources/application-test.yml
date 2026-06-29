@@ -1,0 +1,35 @@
+# ============================================================
+# 【仅本地验证测试 profile】— 指向本地隔离库 hospital_rbac_v11 + 本地 Redis
+# 不连接远程 100.85.88.97。仅用于 PR2 集成测试。
+# ============================================================
+spring:
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://127.0.0.1:3306/hospital_rbac_v11?useSSL=false&serverTimezone=Asia/Shanghai&characterEncoding=UTF-8&allowPublicKeyRetrieval=true
+    username: root
+    password: 123456
+  data:
+    redis:
+      host: 127.0.0.1
+      port: 6379
+      password:
+      database: 0
+
+mybatis-plus:
+  configuration:
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+    map-underscore-to-camel-case: true
+  global-config:
+    db-config:
+      id-type: auto
+      logic-delete-field: delmark
+      logic-delete-value: 0
+      logic-not-delete-value: 1
+
+hospital:
+  jwt:
+    secret: "dev-only-secret-please-change-in-prod-32bytes-min!"
+    expire-hours: 8
+  login:
+    max-fail: 5
+    lock-minutes: 15

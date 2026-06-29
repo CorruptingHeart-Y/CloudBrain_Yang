@@ -26,7 +26,7 @@ public class AuthController {
     private final AuthService authService;
 
     @Public
-    @Operation(summary = "登录", description = "工号(id)+密码登录，返回 JWT。旧 MD5 密码会自动升级为 BCrypt")
+    @Operation(summary = "登录", description = "user_account.username + 密码登录，返回 JWT v2(含 role)。旧 MD5 密码会自动升级为 BCrypt")
     @PostMapping("/login")
     public Result<LoginResponse> login(@RequestBody @Valid LoginRequest request) {
         return Result.ok(authService.login(request));
@@ -43,14 +43,14 @@ public class AuthController {
         return Result.ok();
     }
 
-    @Operation(summary = "当前登录用户信息", description = "返回当前 JWT 对应的员工基本信息(含科室、挂号级别名称)",
+    @Operation(summary = "当前登录用户信息", description = "返回当前 JWT v2 对应的账号身份(accountId/role/employeeId/patientId)及可用展示信息",
             security = @SecurityRequirement(name = "Bearer"))
     @GetMapping("/me")
     public Result<UserInfoResponse> me() {
         return Result.ok(authService.currentUserInfo());
     }
 
-    @Operation(summary = "修改密码", description = "校验原密码后改为新密码(BCrypt 加密)",
+    @Operation(summary = "修改密码", description = "校验原密码后修改当前 user_account 的密码(BCrypt 加密，不改动 employee.password)",
             security = @SecurityRequirement(name = "Bearer"))
     @PutMapping("/password")
     public Result<Void> changePassword(@RequestBody @Valid ChangePasswordRequest request) {

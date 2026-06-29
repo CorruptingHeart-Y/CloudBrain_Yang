@@ -1,5 +1,6 @@
 package com.neusoft.hospital.common;
 
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -13,6 +14,14 @@ import java.util.stream.Collectors;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+    /**
+     * 需要映射为真实 HTTP 状态码的业务码集合（鉴权类）。
+     * 其余业务异常仍返回 HTTP 200 + Result.code，避免普通业务异常意外变成 4xx。
+     */
+    private static boolean isAuthStatus(Integer code) {
+        return code != null && (code == 401 || code == 403 || code == 423);
+    }
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public Result<Void> handleValidException(MethodArgumentNotValidException e) {
         String message = e.getBindingResult().getFieldErrors().stream()
@@ -23,8 +32,13 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(BusinessException.class)
-    public Result<Void> handleBusinessException(BusinessException e) {
+    public Result<Void> handleBusinessException(BusinessException e, HttpServletResponse response) {
         log.warn("业务异常: {}", e.getMessage());
+        // 鉴权类异常映射为真实 HTTP 状态码（401 未登录/凭据无效/Token 无效/账号停用，
+        // 403 权限不足，423 账号锁定）；其余业务异常保持 HTTP 200。
+        if (isAuthStatus(e.getCode())) {
+            response.setStatus(e.getCode());
+        }
         return Result.fail(e.getCode(), e.getMessage());
     }
 
