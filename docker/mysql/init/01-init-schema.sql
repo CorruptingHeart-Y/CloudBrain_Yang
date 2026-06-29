@@ -15,7 +15,7 @@
 -- -----------------------------------------------------------
 CREATE DATABASE IF NOT EXISTS `hospital_cloud_brain`
   DEFAULT CHARACTER SET utf8mb4
-  DEFAULT COLLATE utf8mb4_general_ci;
+  DEFAULT COLLATE utf8mb4_0900_ai_ci;
 
 USE `hospital_cloud_brain`;
 
