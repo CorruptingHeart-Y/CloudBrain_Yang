@@ -49,6 +49,8 @@ __pycache__/
 .env
 .env.local
 .env.*.local
+# 例外：ai-service/.env 作为团队共享配置纳入版本控制（敏感值留空，密钥用环境变量注入）
+!ai-service/.env
 
 # Docker data (local only)
 docker/mysql/data/
@@ -62,6 +64,12 @@ error.txt
 【FY26方案】东北大学-东软教育-云脑诊疗平台项目实训方案-v5.2.doc
 东软智慧云脑诊疗平台_数据库建表语句文档.docx
 技术栈.md
+AI接入的业务需求.md
+docs/
+
+
 
 # Claude Code
 .claude/
+
+

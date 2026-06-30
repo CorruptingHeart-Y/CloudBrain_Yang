@@ -67,6 +67,14 @@ public class Knife4jConfig {
     }
 
     @Bean
+    public GroupedOpenApi aiApi() {
+        return GroupedOpenApi.builder()
+                .group("AI诊前分诊")
+                .pathsToMatch("/api/v1/triage/**")
+                .build();
+    }
+
+    @Bean
     public GroupedOpenApi allApi() {
         return GroupedOpenApi.builder()
                 .group("全部接口")

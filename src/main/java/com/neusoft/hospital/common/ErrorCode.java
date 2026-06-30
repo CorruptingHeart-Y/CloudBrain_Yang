@@ -19,7 +19,10 @@ public enum ErrorCode {
     TOKEN_EXPIRED(401, "令牌已过期，请重新登录"),
     TOKEN_INVALID(401, "令牌无效"),
     ACCOUNT_LOCKED(423, "账号已锁定，请稍后再试"),
-    PASSWORD_TOO_WEAK(400, "密码长度至少6位");
+    PASSWORD_TOO_WEAK(400, "密码长度至少6位"),
+
+    // AI 服务相关
+    AI_UNAVAILABLE(503, "AI分诊服务暂不可用，请人工分诊");
 
     private final Integer code;
     private final String message;
