@@ -27,15 +27,15 @@ services:
       MYSQL_ROOT_PASSWORD: hospital2024
       MYSQL_DATABASE: hospital_cloud_brain
       MYSQL_CHARACTER_SET_SERVER: utf8mb4
-      MYSQL_COLLATION_SERVER: utf8mb4_general_ci
+      MYSQL_COLLATION_SERVER: utf8mb4_0900_ai_ci
       TZ: Asia/Shanghai
     volumes:
       # 数据持久化 — 容器删了数据不丢
       - mysql-data:/var/lib/mysql
-      # 首次启动自动执行建库建表脚本
-      - ./mysql/init:/docker-entrypoint-initdb.d
+      # 首次启动自动执行建库建表脚本（远端 v1.0 同款 01-init-schema.sql）
+      - ./docker/mysql/init:/docker-entrypoint-initdb.d
       # MySQL 配置
-      - ./mysql/my.cnf:/etc/mysql/conf.d/my.cnf
+      - ./docker/mysql/my.cnf:/etc/mysql/conf.d/my.cnf
     command: --default-authentication-plugin=mysql_native_password
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-phospital2024"]
