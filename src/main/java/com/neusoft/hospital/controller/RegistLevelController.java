@@ -14,6 +14,8 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import com.neusoft.hospital.auth.annotation.RequireRole;
+import com.neusoft.hospital.auth.enums.Role;
 import org.springframework.beans.BeanUtils;
 import org.springframework.web.bind.annotation.*;
 
@@ -23,6 +25,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/v1/regist-level")
 @RequiredArgsConstructor
+@RequireRole(Role.ADMIN)
 public class RegistLevelController {
 
     private final RegistLevelService registLevelService;

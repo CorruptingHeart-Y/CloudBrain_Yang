@@ -9,7 +9,7 @@ import java.util.List;
 
 public interface PrescriptionService extends IService<Prescription> {
 
-    IPage<Prescription> pageQuery(Page<Prescription> page, Integer registerId, String drugState);
+    IPage<Prescription> pageQuery(Page<Prescription> page, Integer registerId, String drugState, Integer scopeEmployeeId);
 
     List<Prescription> listByRegisterId(Integer registerId);
 }

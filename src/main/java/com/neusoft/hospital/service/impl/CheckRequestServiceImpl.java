@@ -19,7 +19,7 @@ import java.util.List;
 public class CheckRequestServiceImpl extends ServiceImpl<CheckRequestMapper, CheckRequest> implements CheckRequestService {
 
     @Override
-    public IPage<CheckRequest> pageQuery(Page<CheckRequest> page, Integer registerId, String checkState, LocalDateTime creationTimeStart, LocalDateTime creationTimeEnd) {
+    public IPage<CheckRequest> pageQuery(Page<CheckRequest> page, Integer registerId, String checkState, LocalDateTime creationTimeStart, LocalDateTime creationTimeEnd, Integer scopeEmployeeId) {
         LambdaQueryWrapper<CheckRequest> wrapper = new LambdaQueryWrapper<>();
         if (registerId != null) {
             wrapper.eq(CheckRequest::getRegisterId, registerId);
@@ -32,6 +32,11 @@ public class CheckRequestServiceImpl extends ServiceImpl<CheckRequestMapper, Che
         }
         if (creationTimeEnd != null) {
             wrapper.le(CheckRequest::getCreationTime, creationTimeEnd);
+        }
+        // PR4 医生范围：DOCTOR 仅看本人接诊挂号下的检查申请。scopeEmployeeId 由 CurrentUser 注入(Integer)，非前端入参。
+        if (scopeEmployeeId != null) {
+            wrapper.inSql(CheckRequest::getRegisterId,
+                    "SELECT id FROM register WHERE employee_id = " + scopeEmployeeId);
         }
         wrapper.orderByDesc(CheckRequest::getId);
         return this.page(page, wrapper);

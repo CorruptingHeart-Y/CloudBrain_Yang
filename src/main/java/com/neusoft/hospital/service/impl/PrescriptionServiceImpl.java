@@ -18,13 +18,19 @@ import java.util.List;
 public class PrescriptionServiceImpl extends ServiceImpl<PrescriptionMapper, Prescription> implements PrescriptionService {
 
     @Override
-    public IPage<Prescription> pageQuery(Page<Prescription> page, Integer registerId, String drugState) {
+    public IPage<Prescription> pageQuery(Page<Prescription> page, Integer registerId, String drugState, Integer scopeEmployeeId) {
         LambdaQueryWrapper<Prescription> wrapper = new LambdaQueryWrapper<>();
         if (registerId != null) {
             wrapper.eq(Prescription::getRegisterId, registerId);
         }
         if (StringUtils.hasText(drugState)) {
             wrapper.eq(Prescription::getDrugState, drugState);
+        }
+        // PR4 医生范围：DOCTOR 仅看本人接诊挂号(register.employee_id=当前医生)下的处方。
+        // scopeEmployeeId 由服务端 CurrentUser 注入(Integer)，非前端入参，内联子查询无注入风险。
+        if (scopeEmployeeId != null) {
+            wrapper.inSql(Prescription::getRegisterId,
+                    "SELECT id FROM register WHERE employee_id = " + scopeEmployeeId);
         }
         wrapper.orderByDesc(Prescription::getId);
         return this.page(page, wrapper);

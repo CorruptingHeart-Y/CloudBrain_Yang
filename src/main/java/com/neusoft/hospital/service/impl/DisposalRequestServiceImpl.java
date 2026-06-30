@@ -19,7 +19,7 @@ import java.util.List;
 public class DisposalRequestServiceImpl extends ServiceImpl<DisposalRequestMapper, DisposalRequest> implements DisposalRequestService {
 
     @Override
-    public IPage<DisposalRequest> pageQuery(Page<DisposalRequest> page, Integer registerId, String disposalState, LocalDateTime creationTimeStart, LocalDateTime creationTimeEnd) {
+    public IPage<DisposalRequest> pageQuery(Page<DisposalRequest> page, Integer registerId, String disposalState, LocalDateTime creationTimeStart, LocalDateTime creationTimeEnd, Integer scopeEmployeeId) {
         LambdaQueryWrapper<DisposalRequest> wrapper = new LambdaQueryWrapper<>();
         if (registerId != null) {
             wrapper.eq(DisposalRequest::getRegisterId, registerId);
@@ -32,6 +32,11 @@ public class DisposalRequestServiceImpl extends ServiceImpl<DisposalRequestMappe
         }
         if (creationTimeEnd != null) {
             wrapper.le(DisposalRequest::getCreationTime, creationTimeEnd);
+        }
+        // PR4 医生范围：DOCTOR 仅看本人接诊挂号下的处置申请。scopeEmployeeId 由 CurrentUser 注入(Integer)，非前端入参。
+        if (scopeEmployeeId != null) {
+            wrapper.inSql(DisposalRequest::getRegisterId,
+                    "SELECT id FROM register WHERE employee_id = " + scopeEmployeeId);
         }
         wrapper.orderByDesc(DisposalRequest::getId);
         return this.page(page, wrapper);

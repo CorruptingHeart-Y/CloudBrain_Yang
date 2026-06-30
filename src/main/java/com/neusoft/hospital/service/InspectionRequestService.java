@@ -10,7 +10,7 @@ import java.util.List;
 
 public interface InspectionRequestService extends IService<InspectionRequest> {
 
-    IPage<InspectionRequest> pageQuery(Page<InspectionRequest> page, Integer registerId, String inspectionState, LocalDateTime creationTimeStart, LocalDateTime creationTimeEnd);
+    IPage<InspectionRequest> pageQuery(Page<InspectionRequest> page, Integer registerId, String inspectionState, LocalDateTime creationTimeStart, LocalDateTime creationTimeEnd, Integer scopeEmployeeId);
 
     List<InspectionRequest> listByRegisterId(Integer registerId);
 

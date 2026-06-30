@@ -17,6 +17,8 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import com.neusoft.hospital.auth.annotation.RequireRole;
+import com.neusoft.hospital.auth.enums.Role;
 import org.springframework.beans.BeanUtils;
 import org.springframework.web.bind.annotation.*;
 
@@ -26,6 +28,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/v1/medical-technology")
 @RequiredArgsConstructor
+@RequireRole({Role.ADMIN, Role.DOCTOR})
 public class MedicalTechnologyController {
 
     private final MedicalTechnologyService medicalTechnologyService;

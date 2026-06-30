@@ -10,7 +10,7 @@ import java.util.List;
 
 public interface DisposalRequestService extends IService<DisposalRequest> {
 
-    IPage<DisposalRequest> pageQuery(Page<DisposalRequest> page, Integer registerId, String disposalState, LocalDateTime creationTimeStart, LocalDateTime creationTimeEnd);
+    IPage<DisposalRequest> pageQuery(Page<DisposalRequest> page, Integer registerId, String disposalState, LocalDateTime creationTimeStart, LocalDateTime creationTimeEnd, Integer scopeEmployeeId);
 
     List<DisposalRequest> listByRegisterId(Integer registerId);
 

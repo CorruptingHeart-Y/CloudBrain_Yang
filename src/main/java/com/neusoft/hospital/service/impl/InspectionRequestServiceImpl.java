@@ -19,7 +19,7 @@ import java.util.List;
 public class InspectionRequestServiceImpl extends ServiceImpl<InspectionRequestMapper, InspectionRequest> implements InspectionRequestService {
 
     @Override
-    public IPage<InspectionRequest> pageQuery(Page<InspectionRequest> page, Integer registerId, String inspectionState, LocalDateTime creationTimeStart, LocalDateTime creationTimeEnd) {
+    public IPage<InspectionRequest> pageQuery(Page<InspectionRequest> page, Integer registerId, String inspectionState, LocalDateTime creationTimeStart, LocalDateTime creationTimeEnd, Integer scopeEmployeeId) {
         LambdaQueryWrapper<InspectionRequest> wrapper = new LambdaQueryWrapper<>();
         if (registerId != null) {
             wrapper.eq(InspectionRequest::getRegisterId, registerId);
@@ -32,6 +32,11 @@ public class InspectionRequestServiceImpl extends ServiceImpl<InspectionRequestM
         }
         if (creationTimeEnd != null) {
             wrapper.le(InspectionRequest::getCreationTime, creationTimeEnd);
+        }
+        // PR4 医生范围：DOCTOR 仅看本人接诊挂号下的检验申请。scopeEmployeeId 由 CurrentUser 注入(Integer)，非前端入参。
+        if (scopeEmployeeId != null) {
+            wrapper.inSql(InspectionRequest::getRegisterId,
+                    "SELECT id FROM register WHERE employee_id = " + scopeEmployeeId);
         }
         wrapper.orderByDesc(InspectionRequest::getId);
         return this.page(page, wrapper);

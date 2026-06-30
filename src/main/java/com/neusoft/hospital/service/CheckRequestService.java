@@ -10,7 +10,7 @@ import java.util.List;
 
 public interface CheckRequestService extends IService<CheckRequest> {
 
-    IPage<CheckRequest> pageQuery(Page<CheckRequest> page, Integer registerId, String checkState, LocalDateTime creationTimeStart, LocalDateTime creationTimeEnd);
+    IPage<CheckRequest> pageQuery(Page<CheckRequest> page, Integer registerId, String checkState, LocalDateTime creationTimeStart, LocalDateTime creationTimeEnd, Integer scopeEmployeeId);
 
     List<CheckRequest> listByRegisterId(Integer registerId);
 
