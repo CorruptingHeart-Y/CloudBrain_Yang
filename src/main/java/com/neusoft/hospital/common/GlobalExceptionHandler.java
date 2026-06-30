@@ -15,11 +15,13 @@ import java.util.stream.Collectors;
 public class GlobalExceptionHandler {
 
     /**
-     * 需要映射为真实 HTTP 状态码的业务码集合（鉴权类）。
+     * 需要映射为真实 HTTP 状态码的业务码集合。
+     * - 鉴权类（401/403/423）：未登录/凭据无效/权限不足/账号锁定；
+     * - 404：资源不存在（PR3 患者侧归属校验失败时统一 404，不透露记录是否存在）。
      * 其余业务异常仍返回 HTTP 200 + Result.code，避免普通业务异常意外变成 4xx。
      */
-    private static boolean isAuthStatus(Integer code) {
-        return code != null && (code == 401 || code == 403 || code == 423);
+    private static boolean shouldMapHttpStatus(Integer code) {
+        return code != null && (code == 401 || code == 403 || code == 404 || code == 423);
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
@@ -35,8 +37,8 @@ public class GlobalExceptionHandler {
     public Result<Void> handleBusinessException(BusinessException e, HttpServletResponse response) {
         log.warn("业务异常: {}", e.getMessage());
         // 鉴权类异常映射为真实 HTTP 状态码（401 未登录/凭据无效/Token 无效/账号停用，
-        // 403 权限不足，423 账号锁定）；其余业务异常保持 HTTP 200。
-        if (isAuthStatus(e.getCode())) {
+        // 403 权限不足，423 账号锁定）；404 资源不存在；其余业务异常保持 HTTP 200。
+        if (shouldMapHttpStatus(e.getCode())) {
             response.setStatus(e.getCode());
         }
         return Result.fail(e.getCode(), e.getMessage());

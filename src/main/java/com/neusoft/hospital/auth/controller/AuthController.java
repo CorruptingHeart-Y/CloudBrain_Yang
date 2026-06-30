@@ -7,6 +7,8 @@ import com.neusoft.hospital.auth.dto.UserInfoResponse;
 import com.neusoft.hospital.auth.service.AuthService;
 import com.neusoft.hospital.common.Result;
 import com.neusoft.hospital.auth.annotation.Public;
+import com.neusoft.hospital.auth.annotation.RequireRole;
+import com.neusoft.hospital.auth.enums.Role;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -34,6 +36,7 @@ public class AuthController {
 
     @Operation(summary = "登出", description = "将当前 token 加入 Redis 黑名单，立即失效",
             security = @SecurityRequirement(name = "Bearer"))
+    @RequireRole({Role.ADMIN, Role.DOCTOR, Role.PATIENT})
     @PostMapping("/logout")
     public Result<Void> logout(HttpServletRequest request) {
         String token = extractToken(request);
@@ -45,6 +48,7 @@ public class AuthController {
 
     @Operation(summary = "当前登录用户信息", description = "返回当前 JWT v2 对应的账号身份(accountId/role/employeeId/patientId)及可用展示信息",
             security = @SecurityRequirement(name = "Bearer"))
+    @RequireRole({Role.ADMIN, Role.DOCTOR, Role.PATIENT})
     @GetMapping("/me")
     public Result<UserInfoResponse> me() {
         return Result.ok(authService.currentUserInfo());
@@ -52,6 +56,7 @@ public class AuthController {
 
     @Operation(summary = "修改密码", description = "校验原密码后修改当前 user_account 的密码(BCrypt 加密，不改动 employee.password)",
             security = @SecurityRequirement(name = "Bearer"))
+    @RequireRole({Role.ADMIN, Role.DOCTOR, Role.PATIENT})
     @PutMapping("/password")
     public Result<Void> changePassword(@RequestBody @Valid ChangePasswordRequest request) {
         authService.changePassword(request);

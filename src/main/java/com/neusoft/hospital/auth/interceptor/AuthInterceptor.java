@@ -99,6 +99,17 @@ public class AuthInterceptor implements HandlerInterceptor {
             if (!ok) {
                 throw new BusinessException(ErrorCode.FORBIDDEN);
             }
+        } else {
+            // PR3：PATIENT 默认拒绝未显式声明 @RequireRole 的旧业务通用接口。
+            //   - 旧 Controller（register/prescription/check-request/inspection-request/
+            //     disposal-request 等）均无 @RequireRole，对 PATIENT 一律 403，先堵越权；
+            //   - ADMIN / DOCTOR 维持 PR2 当前行为（仅要求已登录），完整矩阵留待 PR4；
+            //   - PATIENT 仅能访问显式 @RequireRole 包含 PATIENT 的接口（如 PatientController、
+            //     AuthController 登录后接口）。
+            //   注意：仍处于 set() 之前，403 路径不在 ThreadLocal 残留 AuthUser。
+            if (currentRole == Role.PATIENT) {
+                throw new BusinessException(ErrorCode.FORBIDDEN);
+            }
         }
 
         CurrentUser.set(authUser);
