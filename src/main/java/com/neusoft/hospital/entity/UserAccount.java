@@ -41,6 +41,9 @@ public class UserAccount {
     @Schema(description = "状态：1-启用 0-禁用", example = "1")
     private Integer status;
 
+    @Schema(description = "Token版本号，递增后该账号所有历史Token失效", example = "1")
+    private Integer tokenVersion;
+
     @TableLogic
     @Schema(description = "删除标记：1-正常 0-已删除", example = "1")
     private Integer delmark;

@@ -3,6 +3,7 @@ package com.neusoft.hospital.auth.controller;
 import com.neusoft.hospital.auth.dto.ChangePasswordRequest;
 import com.neusoft.hospital.auth.dto.LoginRequest;
 import com.neusoft.hospital.auth.dto.LoginResponse;
+import com.neusoft.hospital.auth.dto.PatientRegisterRequest;
 import com.neusoft.hospital.auth.dto.UserInfoResponse;
 import com.neusoft.hospital.auth.service.AuthService;
 import com.neusoft.hospital.common.Result;
@@ -54,12 +55,20 @@ public class AuthController {
         return Result.ok(authService.currentUserInfo());
     }
 
-    @Operation(summary = "修改密码", description = "校验原密码后修改当前 user_account 的密码(BCrypt 加密，不改动 employee.password)",
+    @Operation(summary = "修改密码", description = "校验原密码后修改当前 user_account 的密码(BCrypt 加密，不改动 employee.password)；token_version+1，当前及历史 Token 失效",
             security = @SecurityRequirement(name = "Bearer"))
     @RequireRole({Role.ADMIN, Role.DOCTOR, Role.PATIENT})
     @PutMapping("/password")
     public Result<Void> changePassword(@RequestBody @Valid ChangePasswordRequest request) {
         authService.changePassword(request);
+        return Result.ok();
+    }
+
+    @Public
+    @Operation(summary = "患者自助注册", description = "新 cardNumber 建 patient+PATIENT账号；已有 patient 且 realName/gender/birthdate 一致才绑定；不返回 JWT，注册后自行 login")
+    @PostMapping("/patient/register")
+    public Result<Void> registerPatient(@RequestBody @Valid PatientRegisterRequest request) {
+        authService.registerPatient(request);
         return Result.ok();
     }
 

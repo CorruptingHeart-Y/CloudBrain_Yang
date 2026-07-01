@@ -21,7 +21,7 @@ public class GlobalExceptionHandler {
      * 其余业务异常仍返回 HTTP 200 + Result.code，避免普通业务异常意外变成 4xx。
      */
     private static boolean shouldMapHttpStatus(Integer code) {
-        return code != null && (code == 401 || code == 403 || code == 404 || code == 423);
+        return code != null && (code == 401 || code == 403 || code == 404 || code == 409 || code == 423);
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

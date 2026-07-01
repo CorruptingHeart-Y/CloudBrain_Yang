@@ -29,6 +29,9 @@ public class AuthUser {
     /** 关联患者id，PATIENT 必填，其余为 null */
     private final Integer patientId;
 
+    /** Token 版本号（来自 JWT claim tv / user_account.token_version），用于全局失效比对 */
+    private final Integer tokenVersion;
+
     /** 真实姓名（展示用），可能为 null */
     private final String realname;
 }

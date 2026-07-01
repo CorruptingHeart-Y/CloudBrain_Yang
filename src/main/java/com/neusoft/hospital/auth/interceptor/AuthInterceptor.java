@@ -75,6 +75,11 @@ public class AuthInterceptor implements HandlerInterceptor {
         if (account == null || account.getStatus() == null || account.getStatus() != 1) {
             throw new BusinessException(ErrorCode.ACCOUNT_DISABLED);
         }
+        // PR5：token_version 校验。账号在禁用/重置密码/改密码后 token_version 递增，
+        //     历史 Token 的 tv 不再匹配 → 立即 401（无法枚举该账号全部旧 Token，故用版本号全局失效）。
+        if (account.getTokenVersion() == null || !account.getTokenVersion().equals(jwtUser.getTokenVersion())) {
+            throw new BusinessException(ErrorCode.TOKEN_INVALID);
+        }
         Role currentRole = Role.fromString(account.getRole());
         if (currentRole == null) {
             log.error("user_account.id={} 的 role 值非法: {}", account.getId(), account.getRole());
@@ -85,6 +90,7 @@ public class AuthInterceptor implements HandlerInterceptor {
                 .role(currentRole)
                 .employeeId(account.getEmployeeId())
                 .patientId(account.getPatientId())
+                .tokenVersion(account.getTokenVersion())
                 .realname(jwtUser.getRealname())
                 .build();
 

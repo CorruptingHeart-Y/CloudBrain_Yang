@@ -21,7 +21,11 @@ public enum ErrorCode {
     ACCOUNT_DISABLED(401, "账号已停用或不存在"),
     ACCOUNT_LOCKED(423, "账号已锁定，请稍后再试"),
     FORBIDDEN(403, "权限不足"),
-    PASSWORD_TOO_WEAK(400, "密码长度至少6位");
+    PASSWORD_TOO_WEAK(400, "密码长度至少6位"),
+
+    // PR5 账号生命周期
+    CONFLICT(409, "操作冲突"),
+    REGISTER_FAILED(400, "注册失败，请核对提交信息或联系管理员");
 
     private final Integer code;
     private final String message;

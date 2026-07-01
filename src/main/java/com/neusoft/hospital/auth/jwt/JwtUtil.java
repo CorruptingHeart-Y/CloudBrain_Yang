@@ -27,6 +27,8 @@ public class JwtUtil {
     public static final String CLAIM_EMPLOYEE_ID = "employeeId";
     public static final String CLAIM_PATIENT_ID = "patientId";
     public static final String CLAIM_REALNAME = "realname";
+    /** PR5：Token 版本号，与 user_account.token_version 比对，递增后历史 Token 失效 */
+    public static final String CLAIM_TOKEN_VERSION = "tv";
 
     @Value("${hospital.jwt.secret}")
     private String secret;
@@ -46,7 +48,7 @@ public class JwtUtil {
     }
 
     /**
-     * 签发 JWT v2。sub = accountId，claims 含 ver/role/employeeId/patientId/realname。
+     * 签发 JWT v2。sub = accountId，claims 含 ver/role/employeeId/patientId/realname/tv。
      * 不放入密码、身份证号、地址、手机号等敏感信息。
      */
     public String generate(AuthUser user) {
@@ -56,6 +58,7 @@ public class JwtUtil {
                 .subject(String.valueOf(user.getAccountId()))
                 .claim(CLAIM_VER, VER)
                 .claim(CLAIM_ROLE, user.getRole().name())
+                .claim(CLAIM_TOKEN_VERSION, user.getTokenVersion() == null ? 1 : user.getTokenVersion())
                 .issuedAt(new Date(now))
                 .expiration(new Date(now + exp));
         if (user.getEmployeeId() != null) {
@@ -99,6 +102,7 @@ public class JwtUtil {
         Integer accountId = parseInteger(payload.getSubject());
         Integer employeeId = readInt(payload, CLAIM_EMPLOYEE_ID);
         Integer patientId = readInt(payload, CLAIM_PATIENT_ID);
+        Integer tokenVersion = readInt(payload, CLAIM_TOKEN_VERSION);
         String realname = payload.get(CLAIM_REALNAME, String.class);
 
         return AuthUser.builder()
@@ -106,6 +110,7 @@ public class JwtUtil {
                 .role(role)
                 .employeeId(employeeId)
                 .patientId(patientId)
+                .tokenVersion(tokenVersion)
                 .realname(realname)
                 .build();
     }

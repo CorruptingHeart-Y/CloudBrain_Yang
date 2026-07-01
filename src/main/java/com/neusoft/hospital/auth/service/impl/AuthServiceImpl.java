@@ -6,6 +6,7 @@ import com.neusoft.hospital.auth.context.CurrentUser;
 import com.neusoft.hospital.auth.dto.ChangePasswordRequest;
 import com.neusoft.hospital.auth.dto.LoginRequest;
 import com.neusoft.hospital.auth.dto.LoginResponse;
+import com.neusoft.hospital.auth.dto.PatientRegisterRequest;
 import com.neusoft.hospital.auth.dto.UserInfoResponse;
 import com.neusoft.hospital.auth.enums.Role;
 import com.neusoft.hospital.auth.jwt.JwtUtil;
@@ -25,13 +26,16 @@ import com.neusoft.hospital.service.RegistLevelService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.DigestUtils;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.Objects;
 
 @Slf4j
 @Service
@@ -104,6 +108,7 @@ public class AuthServiceImpl implements AuthService {
                 .role(role)
                 .employeeId(account.getEmployeeId())
                 .patientId(account.getPatientId())
+                .tokenVersion(account.getTokenVersion())
                 .realname(realname)
                 .build();
 
@@ -143,10 +148,71 @@ public class AuthServiceImpl implements AuthService {
             throw new BusinessException(ErrorCode.BAD_CREDENTIALS);
         }
         // 只改写 user_account.password（BCrypt），禁止继续改写 employee.password
-        UserAccount update = new UserAccount();
-        update.setId(account.getId());
-        update.setPassword(BCRYPT.encode(request.getNewPassword()));
-        userAccountMapper.updateById(update);
+        // PR5：同时 token_version+1，使当前及所有历史 Token 立即失效（需重新登录）
+        userAccountMapper.update(null, new com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<UserAccount>()
+                .eq(UserAccount::getId, account.getId())
+                .set(UserAccount::getPassword, BCRYPT.encode(request.getNewPassword()))
+                .setSql("token_version = token_version + 1"));
+    }
+
+    @Override
+    @Transactional
+    public void registerPatient(PatientRegisterRequest request) {
+        // 不把 cardNumber/手机号/地址/密码写入普通日志；失败统一安全消息，不泄露身份证是否存在
+        try {
+            Patient existing = patientMapper.selectOne(
+                    new LambdaQueryWrapper<Patient>().eq(Patient::getCardNumber, request.getCardNumber()));
+            if (existing == null) {
+                // 新患者：建 patient + PATIENT 账号
+                Patient p = new Patient();
+                p.setRealName(request.getRealName());
+                p.setGender(request.getGender());
+                p.setCardNumber(request.getCardNumber());
+                p.setBirthdate(request.getBirthdate());
+                p.setPhone(request.getPhone());
+                p.setHomeAddress(request.getHomeAddress());
+                p.setDelmark(1);
+                patientMapper.insert(p);
+                insertPatientAccount(request.getUsername(), request.getPassword(), p.getId());
+            } else {
+                // 已有患者：仅当 realName/gender/birthdate 完全一致才允许绑定；不修改其关键身份资料
+                if (!patientIdentityMatches(existing, request)) {
+                    throw new BusinessException(ErrorCode.REGISTER_FAILED);
+                }
+                // 已绑定账号 / username 已占用 → 统一安全失败（不区分原因）
+                if (userAccountMapper.selectOne(new LambdaQueryWrapper<UserAccount>()
+                        .eq(UserAccount::getPatientId, existing.getId())) != null) {
+                    throw new BusinessException(ErrorCode.REGISTER_FAILED);
+                }
+                if (userAccountMapper.selectOne(new LambdaQueryWrapper<UserAccount>()
+                        .eq(UserAccount::getUsername, request.getUsername())) != null) {
+                    throw new BusinessException(ErrorCode.REGISTER_FAILED);
+                }
+                insertPatientAccount(request.getUsername(), request.getPassword(), existing.getId());
+            }
+        } catch (DuplicateKeyException e) {
+            // 并发兜底：uk_username / uk_patient_id / uk_card_number 冲突 → 统一安全失败，事务回滚无部分写入
+            throw new BusinessException(ErrorCode.REGISTER_FAILED);
+        }
+    }
+
+    private void insertPatientAccount(String username, String rawPassword, Integer patientId) {
+        UserAccount account = new UserAccount();
+        account.setUsername(username);
+        account.setPassword(BCRYPT.encode(rawPassword));
+        account.setRole(Role.PATIENT.name());
+        account.setEmployeeId(null);
+        account.setPatientId(patientId);
+        account.setStatus(1);
+        account.setTokenVersion(1);
+        account.setDelmark(1);
+        userAccountMapper.insert(account);
+    }
+
+    private boolean patientIdentityMatches(Patient p, PatientRegisterRequest r) {
+        return Objects.equals(p.getRealName(), r.getRealName())
+                && Objects.equals(p.getGender(), r.getGender())
+                && Objects.equals(p.getBirthdate(), r.getBirthdate());
     }
 
     /**
