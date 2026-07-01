@@ -71,7 +71,8 @@ public class Knife4jConfig {
         return GroupedOpenApi.builder()
                 .group("AI智能辅助")
                 .pathsToMatch("/api/v1/triage/**",
-                        "/api/v1/prescription/check/**")
+                        "/api/v1/prescription/check/**",
+                        "/api/v1/medical-record/**")
                 .build();
     }
 

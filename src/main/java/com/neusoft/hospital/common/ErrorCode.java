@@ -23,7 +23,8 @@ public enum ErrorCode {
 
     // AI 服务相关
     AI_UNAVAILABLE(503, "AI分诊服务暂不可用，请人工分诊"),
-    AI_AUDIT_UNAVAILABLE(503, "AI处方审核服务暂不可用，请人工核对");
+    AI_AUDIT_UNAVAILABLE(503, "AI处方审核服务暂不可用，请人工核对"),
+    AI_MEDICAL_UNAVAILABLE(503, "AI病历生成服务暂不可用，请人工书写");
 
     private final Integer code;
     private final String message;

@@ -52,4 +52,5 @@ hospital:
     internal-key: ${INTERNAL_KEY:change-me-shared-with-springboot}
     triage-path: /ai/triage
     prescription-check-path: /ai/prescription-check
+    medical-record-path: /ai/medical-record
     timeout-seconds: 30

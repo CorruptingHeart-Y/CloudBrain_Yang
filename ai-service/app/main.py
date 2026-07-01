@@ -8,6 +8,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.clients.glm_client import get_glm_client
 from app.config import get_settings
+from app.routers import medical_record as medical_record_router
 from app.routers import prescription as prescription_router
 from app.routers import triage as triage_router
 
@@ -43,3 +44,4 @@ def health():
 
 app.include_router(triage_router.router, prefix="/ai")
 app.include_router(prescription_router.router, prefix="/ai")
+app.include_router(medical_record_router.router, prefix="/ai")

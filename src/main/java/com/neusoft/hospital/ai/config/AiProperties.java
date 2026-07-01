@@ -25,6 +25,9 @@ public class AiProperties {
     /** 处方审核端点路径 */
     private String prescriptionCheckPath = "/ai/prescription-check";
 
+    /** 病历生成端点路径 */
+    private String medicalRecordPath = "/ai/medical-record";
+
     /** 调用超时(秒) */
     private int timeoutSeconds = 30;
 }
