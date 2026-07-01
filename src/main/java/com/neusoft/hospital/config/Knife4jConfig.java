@@ -97,6 +97,17 @@ public class Knife4jConfig {
     }
 
     @Bean
+    public GroupedOpenApi aiApi() {
+        return GroupedOpenApi.builder()
+                .group("7-AI智能辅助")
+                .displayName("AI智能辅助（诊前分诊/处方审核/病历生成）")
+                .pathsToMatch("/api/v1/triage/**",
+                        "/api/v1/prescription/check/**",
+                        "/api/v1/medical-record/**")
+                .build();
+    }
+
+    @Bean
     public GroupedOpenApi allApi() {
         return GroupedOpenApi.builder()
                 .group("0-全部接口")

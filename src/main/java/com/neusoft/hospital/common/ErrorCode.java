@@ -25,7 +25,12 @@ public enum ErrorCode {
 
     // PR5 账号生命周期
     CONFLICT(409, "操作冲突"),
-    REGISTER_FAILED(400, "注册失败，请核对提交信息或联系管理员");
+    REGISTER_FAILED(400, "注册失败，请核对提交信息或联系管理员"),
+
+    // AI 服务相关
+    AI_UNAVAILABLE(503, "AI分诊服务暂不可用，请人工分诊"),
+    AI_AUDIT_UNAVAILABLE(503, "AI处方审核服务暂不可用，请人工核对"),
+    AI_MEDICAL_UNAVAILABLE(503, "AI病历生成服务暂不可用，请人工书写");
 
     private final Integer code;
     private final String message;

@@ -1,0 +1,8 @@
+# uv / Python
+.venv/
+__pycache__/
+*.pyc
+# uv.lock 提交以锁定团队依赖版本（含 sniffio 等）
+
+# 注意：.env 已纳入版本控制（敏感值 GLM_API_KEY/INTERNAL_KEY 留空，
+# 密钥由各开发者用环境变量注入）。请勿在本地往 .env 填真实密钥后提交。
