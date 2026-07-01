@@ -51,4 +51,5 @@ hospital:
     # 通过环境变量 INTERNAL_KEY 注入（与 Python 侧同名，设一次两边生效）
     internal-key: ${INTERNAL_KEY:change-me-shared-with-springboot}
     triage-path: /ai/triage
+    prescription-check-path: /ai/prescription-check
     timeout-seconds: 30

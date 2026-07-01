@@ -69,8 +69,9 @@ public class Knife4jConfig {
     @Bean
     public GroupedOpenApi aiApi() {
         return GroupedOpenApi.builder()
-                .group("AI诊前分诊")
-                .pathsToMatch("/api/v1/triage/**")
+                .group("AI智能辅助")
+                .pathsToMatch("/api/v1/triage/**",
+                        "/api/v1/prescription/check/**")
                 .build();
     }
 

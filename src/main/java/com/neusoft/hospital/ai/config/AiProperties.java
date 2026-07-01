@@ -22,6 +22,9 @@ public class AiProperties {
     /** 分诊端点路径 */
     private String triagePath = "/ai/triage";
 
+    /** 处方审核端点路径 */
+    private String prescriptionCheckPath = "/ai/prescription-check";
+
     /** 调用超时(秒) */
     private int timeoutSeconds = 30;
 }

@@ -22,7 +22,8 @@ public enum ErrorCode {
     PASSWORD_TOO_WEAK(400, "密码长度至少6位"),
 
     // AI 服务相关
-    AI_UNAVAILABLE(503, "AI分诊服务暂不可用，请人工分诊");
+    AI_UNAVAILABLE(503, "AI分诊服务暂不可用，请人工分诊"),
+    AI_AUDIT_UNAVAILABLE(503, "AI处方审核服务暂不可用，请人工核对");
 
     private final Integer code;
     private final String message;
