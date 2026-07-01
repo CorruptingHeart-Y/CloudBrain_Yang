@@ -1,5 +1,8 @@
 -- ============================================================
--- 东软智慧云脑诊疗平台 - v1.2 账号生命周期迁移结果【只读校验】
+-- ⚠️ SUPERSEDED — 对应的 v1.2 迁移已被 v2.0 取代，本校验脚本仅供历史追溯，请勿配合 v1.2 执行。
+--   新部署使用 v2.0_identity_schema_verify.sql。
+-- ============================================================
+-- 东软智慧云脑诊疗平台 - v1.2 账号生命周期迁移结果【只读校验 · 已废弃】
 -- 目标库：hospital_cloud_brain
 -- 用法：mysql -h <host> -uroot -p hospital_cloud_brain < sql/v1.2_account_lifecycle_verify.sql
 -- 仅执行只读 SELECT / information_schema 查询，不修改任何数据。

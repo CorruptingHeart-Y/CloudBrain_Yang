@@ -17,6 +17,7 @@ import com.neusoft.hospital.entity.SettleCategory;
 import com.neusoft.hospital.auth.context.CurrentUser;
 import com.neusoft.hospital.service.DepartmentService;
 import com.neusoft.hospital.service.EmployeeService;
+import com.neusoft.hospital.service.PatientRegisterLinkService;
 import com.neusoft.hospital.service.RegisterOwnership;
 import com.neusoft.hospital.service.RegisterService;
 import com.neusoft.hospital.service.RegistLevelService;
@@ -33,7 +34,7 @@ import org.springframework.web.bind.annotation.*;
 import java.time.LocalDate;
 import java.util.List;
 
-@Tag(name = "挂号管理", description = "患者挂号信息的增删改查及状态流转接口")
+@Tag(name = "挂号管理", description = "患者挂号信息的增删改查及状态流转接口；PATIENT 仅只读本人 link 记录")
 @RestController
 @RequestMapping("/api/v1/register")
 @RequiredArgsConstructor
@@ -46,9 +47,11 @@ public class RegisterController {
     private final RegistLevelService registLevelService;
     private final SettleCategoryService settleCategoryService;
     private final RegisterOwnership registerOwnership;
+    private final PatientRegisterLinkService patientRegisterLinkService;
 
-    @Operation(summary = "分页查询挂号列表", description = "支持按病历号精确查询、姓名模糊查询、看诊状态、就诊日期范围和科室筛选；DOCTOR 仅返回本人接诊记录")
+    @Operation(summary = "分页查询挂号列表", description = "DOCTOR 仅返回本人接诊记录；PATIENT 仅返回桥接表内 link 到本人的记录；ADMIN 不限")
     @GetMapping
+    @RequireRole({Role.ADMIN, Role.DOCTOR, Role.PATIENT})
     public Result<PageResult<RegisterResponse>> page(
             @Parameter(description = "页码，默认1", example = "1") @RequestParam(defaultValue = "1") Integer pageNum,
             @Parameter(description = "每页条数，默认10", example = "10") @RequestParam(defaultValue = "10") Integer pageSize,
@@ -59,44 +62,51 @@ public class RegisterController {
             @Parameter(description = "就诊日期截止（含），格式yyyy-MM-dd", example = "2024-12-31") @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate visitDateEnd,
             @Parameter(description = "科室ID", example = "1") @RequestParam(required = false) Integer deptmentId) {
         Page<Register> page = new Page<>(pageNum, pageSize);
-        // PR4：DOCTOR 仅看本人接诊挂号；ADMIN 不限。employeeId 来自 CurrentUser，非前端入参
-        IPage<Register> result = registerService.pageQuery(page, caseNumber, realName, visitState, visitDateStart, visitDateEnd, deptmentId, registerOwnership.doctorScopeEmployeeIdOrNull());
+        // DOCTOR: employee_id 范围; PATIENT: register_id 范围(经桥接表); ADMIN: 不限
+        IPage<Register> result = registerService.pageQuery(page, caseNumber, realName, visitState,
+                visitDateStart, visitDateEnd, deptmentId,
+                registerOwnership.doctorScopeEmployeeIdOrNull(),
+                registerOwnership.patientScopeRegisterIdsOrNull());
         List<RegisterResponse> responses = result.getRecords().stream().map(this::toResponse).toList();
         return Result.ok(PageResult.of(result.getTotal(), pageNum, pageSize, responses));
     }
 
-    @Operation(summary = "根据病历号查询挂号信息", description = "通过病历号获取挂号完整信息，含科室名称、医生姓名、挂号级别名称和结算类别名称；DOCTOR 仅限本人接诊")
+    @Operation(summary = "根据病历号查询挂号信息", description = "DOCTOR 仅限本人接诊；PATIENT 仅限本人 link；ADMIN 任意；不命中 → 404")
     @GetMapping("/case/{caseNumber}")
+    @RequireRole({Role.ADMIN, Role.DOCTOR, Role.PATIENT})
     public Result<RegisterResponse> getByCaseNumber(
             @Parameter(description = "病历号", example = "BL20240001", required = true) @PathVariable String caseNumber) {
         Register register = registerService.getByCaseNumber(caseNumber);
         if (register == null) {
             return Result.fail(404, "挂号记录不存在");
         }
-        // 归属校验（DOCTOR 非本人 → 真实 404；ADMIN 任意），不命中抛 404
+        // 归属校验（DOCTOR/PATIENT 非本人 → 真实 404；ADMIN 任意）
         registerOwnership.requireAccessibleRegister(register.getId());
         return Result.ok(toResponse(register));
     }
 
-    @Operation(summary = "根据ID查询挂号详情", description = "通过挂号ID获取挂号完整信息；DOCTOR 仅限本人接诊，他人/不存在 → 404")
+    @Operation(summary = "根据ID查询挂号详情", description = "DOCTOR 仅限本人接诊；PATIENT 仅限本人 link；他人/不存在 → 404")
     @GetMapping("/{id}")
+    @RequireRole({Role.ADMIN, Role.DOCTOR, Role.PATIENT})
     public Result<RegisterResponse> getById(
             @Parameter(description = "挂号ID", example = "1", required = true) @PathVariable Integer id) {
-        // 归属校验由 SQL WHERE id=? AND employee_id=? 完成（DOCTOR），不命中 → 真实 404
+        // 归属校验：DOCTOR=employee_id，PATIENT=link，ADMIN=exists；不命中 → 真实 404
         Register register = registerOwnership.requireAccessibleRegister(id);
         return Result.ok(toResponse(register));
     }
 
-    @Operation(summary = "新增挂号", description = "创建新的挂号记录；DOCTOR 仅能为本人接诊建号（强制 employeeId=当前医生），ADMIN 可指定任意医生")
+    @Operation(summary = "新增挂号", description = "DOCTOR 仅能为本人接诊建号；ADMIN 可指定医生；PATIENT 403。建号后身份匹配则自动建 link")
     @PostMapping
     public Result<Void> create(@RequestBody @Valid RegisterCreateRequest request) {
         Register register = new Register();
         BeanUtils.copyProperties(request, register);
-        // PR4：DOCTOR 不得通过 body 伪造 employeeId 为他人接诊；强制覆盖为当前医生
+        // DOCTOR 不得通过 body 伪造 employeeId 为他人接诊；强制覆盖为当前医生
         if (CurrentUser.getAuthUser() != null && CurrentUser.getAuthUser().getRole() == Role.DOCTOR) {
             register.setEmployeeId(CurrentUser.getAuthUser().getEmployeeId());
         }
         registerService.save(register);
+        // v2.0：身份(card_number+real_name+gender+birthdate)与某 patient 严格匹配则自动建 link
+        patientRegisterLinkService.linkIfMatched(register);
         return Result.ok();
     }
 

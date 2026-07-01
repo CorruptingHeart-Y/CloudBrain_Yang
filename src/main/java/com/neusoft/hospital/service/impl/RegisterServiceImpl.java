@@ -19,7 +19,7 @@ import java.util.List;
 public class RegisterServiceImpl extends ServiceImpl<RegisterMapper, Register> implements RegisterService {
 
     @Override
-    public IPage<Register> pageQuery(Page<Register> page, String caseNumber, String realName, Integer visitState, LocalDate visitDateStart, LocalDate visitDateEnd, Integer deptmentId, Integer scopeEmployeeId) {
+    public IPage<Register> pageQuery(Page<Register> page, String caseNumber, String realName, Integer visitState, LocalDate visitDateStart, LocalDate visitDateEnd, Integer deptmentId, Integer scopeEmployeeId, List<Integer> scopeRegisterIds) {
         LambdaQueryWrapper<Register> wrapper = new LambdaQueryWrapper<>();
         if (StringUtils.hasText(caseNumber)) {
             wrapper.like(Register::getCaseNumber, caseNumber);
@@ -39,9 +39,17 @@ public class RegisterServiceImpl extends ServiceImpl<RegisterMapper, Register> i
         if (deptmentId != null) {
             wrapper.eq(Register::getDeptmentId, deptmentId);
         }
-        // PR4 医生范围：DOCTOR 只能看本人接诊的挂号；scopeEmployeeId 由服务端 CurrentUser 注入，非前端入参
+        // DOCTOR 范围：scopeEmployeeId 由 CurrentUser 注入，非前端入参
         if (scopeEmployeeId != null) {
             wrapper.eq(Register::getEmployeeId, scopeEmployeeId);
+        }
+        // PATIENT 范围：仅返回桥接表内 link 到本人的 register；空 list 表示无 link → 返回空页
+        if (scopeRegisterIds != null) {
+            if (scopeRegisterIds.isEmpty()) {
+                wrapper.eq(Register::getId, -1); // 永假条件，保证空结果
+            } else {
+                wrapper.in(Register::getId, scopeRegisterIds);
+            }
         }
         wrapper.orderByDesc(Register::getId);
         return this.page(page, wrapper);

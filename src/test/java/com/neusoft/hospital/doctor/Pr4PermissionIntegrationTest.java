@@ -141,10 +141,11 @@ class Pr4PermissionIntegrationTest {
     // ---------- 3. PATIENT 继续无法访问旧通用接口 ----------
 
     @Test
-    @DisplayName("PATIENT 访问 register/prescription 等旧通用接口仍为 HTTP 403")
+    @DisplayName("PATIENT 访问 prescription/check 等旧通用接口仍为 HTTP 403（/register GET 已允许只读）")
     void patientForbiddenOnLegacy() throws Exception {
         String token = login("patient01", "patient123");
-        for (String p : List.of("/api/v1/register", "/api/v1/prescription", "/api/v1/check-request",
+        // v2.0：PATIENT GET /register 已允许（只读本人 link）；其余旧通用接口仍 403
+        for (String p : List.of("/api/v1/prescription", "/api/v1/check-request",
                 "/api/v1/inspection-request", "/api/v1/disposal-request", "/api/v1/employee")) {
             ResponseEntity<String> resp = get(p, token);
             assertEquals(403, resp.getStatusCode().value(), p + " 应 403");
@@ -270,10 +271,10 @@ class Pr4PermissionIntegrationTest {
     }
 
     @Test
-    @DisplayName("X-Role: ADMIN 不能让 PATIENT 越权访问旧通用接口")
+    @DisplayName("X-Role: ADMIN 不能让 PATIENT 越权访问 ADMIN 专属接口")
     void xRoleSpoofingNoEffectOnPatient() throws Exception {
         String token = login("patient01", "patient123");
-        assertEquals(403, get("/api/v1/register", token, "ADMIN").getStatusCode().value());
+        assertEquals(403, get("/api/v1/employee", token, "ADMIN").getStatusCode().value());
     }
 
     // ---------- 附加：DOCTOR 访问 drug-info/disease/medical-technology (ADMIN+DOCTOR) 应 200 ----------

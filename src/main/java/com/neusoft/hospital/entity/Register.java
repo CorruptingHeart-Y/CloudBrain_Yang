@@ -34,9 +34,6 @@ public class Register {
     @Schema(description = "身份证号", example = "210102199001011234")
     private String cardNumber;
 
-    @Schema(description = "患者id，指向patient(id)（PR1 v1.1 新增，可空）", example = "1")
-    private Integer patientId;
-
     @Schema(description = "出生日期", example = "1990-01-01")
     private LocalDate birthdate;
 

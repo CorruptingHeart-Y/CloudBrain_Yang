@@ -1,18 +1,17 @@
 -- ============================================================
 -- 【仅本地验证 fixture — 禁止进入生产迁移路径，禁止由 docker compose 自动执行】
 --
--- 用途：为 PR3 患者门户端到端验证在本地隔离库 hospital_rbac_v11 中创建：
---   * patientB（patient.id=2）+ patient02 账号（PATIENT，patient_id=2，MD5 密码，首次登录升级 BCrypt）
+-- 用途：为患者门户端到端验证在本地隔离库 hospital_rbac_v11 中创建：
+--   * patientB（patient.id=2）+ patient02 账号（PATIENT，patient_id=2，MD5 密码）
 --   * patientA（patient.id=1，由 rbac_fixture.sql 建立，账号 patient01）的两条 register（id=1,2）
 --   * patientB 的一条 register（id=3）
---   * 一条 register.patient_id IS NULL 的历史异常记录（id=4），验证不会被患者列表返回
+--   * 一条无 link 的历史异常 register（id=4，异常 card_number），验证不会被患者列表返回
+--   * patient_register_link：patientA↔register 1,2；patientB↔register 3
 --   * register.id=1（patientA 首诊）的病历/处方/检查/检验/处置各一项
 --
+-- v2.0：register 不再有 patient_id 列；患者归属经 patient_register_link 桥接表表达。
 -- 前置：rbac_fixture.sql 已建立 department(1)/regist_level(1)/employee(1)/patient(1)/user_account(1,2,3)。
 -- 幂等：INSERT ... ON DUPLICATE KEY UPDATE，重复执行重置状态。
---
--- 口令（仅本地测试用）：
---   patient02 / patient123  （存储为 MD5，首次登录后由后端升级为 BCrypt）
 -- ============================================================
 USE `hospital_rbac_v11`;
 
@@ -26,40 +25,48 @@ INSERT INTO `user_account` (`id`,`username`,`password`,`role`,`employee_id`,`pat
 VALUES (4,'patient02','c63f24079f1d5e4cae3fdc1a29116a7b','PATIENT',NULL,2,1,1,NOW(),NOW())
 ON DUPLICATE KEY UPDATE `password`='c63f24079f1d5e4cae3fdc1a29116a7b', `role`='PATIENT', `employee_id`=NULL, `patient_id`=2, `status`=1, `delmark`=1, `update_time`=NOW();
 
--- ---------- patientA 的两条 register（patient_id=1） ----------
+-- ---------- patientA 的两条 register（无 patient_id 列） ----------
 INSERT INTO `register`
-  (`id`,`case_number`,`real_name`,`gender`,`card_number`,`patient_id`,`birthdate`,`age`,`age_type`,`home_address`,
+  (`id`,`case_number`,`real_name`,`gender`,`card_number`,`birthdate`,`age`,`age_type`,`home_address`,
    `visit_date`,`noon`,`deptment_id`,`employee_id`,`regist_level_id`,`settle_category_id`,`is_book`,`regist_method`,`regist_money`,`visit_state`)
 VALUES
-  (1,'BL_A1','测试患者','男','210102199001011234',1,'1990-01-01',36,'岁','沈阳市测试地址',
+  (1,'BL_A1','测试患者','男','210102199001011234','1990-01-01',36,'岁','沈阳市测试地址',
    '2026-06-01 09:30:00','上午',1,1,1,NULL,'否','现金',25.00,1),
-  (2,'BL_A2','测试患者','男','210102199001011234',1,'1990-01-01',36,'岁','沈阳市测试地址',
+  (2,'BL_A2','测试患者','男','210102199001011234','1990-01-01',36,'岁','沈阳市测试地址',
    '2026-06-10 14:00:00','下午',1,1,1,NULL,'否','医保卡',25.00,3)
 ON DUPLICATE KEY UPDATE
-  `patient_id`=VALUES(`patient_id`), `visit_date`=VALUES(`visit_date`), `visit_state`=VALUES(`visit_state`),
+  `visit_date`=VALUES(`visit_date`), `visit_state`=VALUES(`visit_state`),
   `deptment_id`=VALUES(`deptment_id`), `employee_id`=VALUES(`employee_id`), `regist_level_id`=VALUES(`regist_level_id`),
   `case_number`=VALUES(`case_number`);
 
--- ---------- patientB 的一条 register（patient_id=2） ----------
+-- ---------- patientB 的一条 register ----------
 INSERT INTO `register`
-  (`id`,`case_number`,`real_name`,`gender`,`card_number`,`patient_id`,`birthdate`,`age`,`age_type`,`home_address`,
+  (`id`,`case_number`,`real_name`,`gender`,`card_number`,`birthdate`,`age`,`age_type`,`home_address`,
    `visit_date`,`noon`,`deptment_id`,`employee_id`,`regist_level_id`,`settle_category_id`,`is_book`,`regist_method`,`regist_money`,`visit_state`)
 VALUES
-  (3,'BL_B1','测试患者B','女','210102199505056789',2,'1995-05-05',31,'岁','沈阳市测试地址B',
+  (3,'BL_B1','测试患者B','女','210102199505056789','1995-05-05',31,'岁','沈阳市测试地址B',
    '2026-06-05 10:00:00','上午',1,1,1,NULL,'否','现金',25.00,2)
 ON DUPLICATE KEY UPDATE
-  `patient_id`=VALUES(`patient_id`), `visit_date`=VALUES(`visit_date`), `visit_state`=VALUES(`visit_state`),
+  `visit_date`=VALUES(`visit_date`), `visit_state`=VALUES(`visit_state`),
   `case_number`=VALUES(`case_number`);
 
--- ---------- 历史异常记录：patient_id IS NULL（不应被任何患者列表返回） ----------
+-- ---------- 历史异常记录：异常 card_number（12 位），无 link，不应被任何患者列表返回 ----------
 INSERT INTO `register`
-  (`id`,`case_number`,`real_name`,`gender`,`card_number`,`patient_id`,`birthdate`,`age`,`age_type`,`home_address`,
+  (`id`,`case_number`,`real_name`,`gender`,`card_number`,`birthdate`,`age`,`age_type`,`home_address`,
    `visit_date`,`noon`,`deptment_id`,`employee_id`,`regist_level_id`,`settle_category_id`,`is_book`,`regist_method`,`regist_money`,`visit_state`)
 VALUES
-  (4,'BL_NULL','历史患者','男','12位异常',NULL,'1980-01-01',46,'岁',NULL,
+  (4,'BL_NULL','历史患者','男','12位异常','1980-01-01',46,'岁',NULL,
    '2025-01-01 09:00:00','上午',1,1,1,NULL,'否','现金',10.00,3)
 ON DUPLICATE KEY UPDATE
-  `patient_id`=NULL, `case_number`=VALUES(`case_number`), `visit_state`=VALUES(`visit_state`);
+  `case_number`=VALUES(`case_number`), `visit_state`=VALUES(`visit_state`);
+
+-- ---------- patient_register_link：患者↔挂号 桥接 ----------
+INSERT INTO `patient_register_link` (`id`,`patient_id`,`register_id`,`link_source`,`create_time`) VALUES
+  (1,1,1,'AUTO_INIT',NOW()),
+  (2,1,2,'AUTO_INIT',NOW()),
+  (3,2,3,'AUTO_INIT',NOW())
+ON DUPLICATE KEY UPDATE `patient_id`=VALUES(`patient_id`), `link_source`=VALUES(`link_source`);
+-- register 4 不建 link（异常 card_number，待人工）
 
 -- ---------- register.id=1（patientA 首诊）的关联数据各一项 ----------
 INSERT INTO `medical_record`

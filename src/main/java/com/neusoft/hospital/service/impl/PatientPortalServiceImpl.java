@@ -28,6 +28,7 @@ import com.neusoft.hospital.service.DisposalRequestService;
 import com.neusoft.hospital.service.EmployeeService;
 import com.neusoft.hospital.service.InspectionRequestService;
 import com.neusoft.hospital.service.PatientPortalService;
+import com.neusoft.hospital.service.PatientRegisterLinkService;
 import com.neusoft.hospital.service.PrescriptionService;
 import com.neusoft.hospital.service.RegistLevelService;
 import com.neusoft.hospital.service.RegisterService;
@@ -37,14 +38,14 @@ import org.springframework.stereotype.Service;
 import java.util.List;
 
 /**
- * 患者门户服务实现（PR3）。
+ * 患者门户服务实现（v2.0）。
  * <p>
  * 安全要点：
  * <ul>
  *   <li>patientId 只取自 {@link CurrentUser}（来源为已签名校验的 JWT v2），不接收前端入参；</li>
- *   <li>列表查询：WHERE patient_id = currentPatientId，NULL patient_id 历史记录天然排除；</li>
- *   <li>详情查询：WHERE id = registerId AND patient_id = currentPatientId 单条 SQL，命中前不读任何关联表；</li>
- *   <li>不使用 card_number 兜底匹配；只认 register.patient_id。</li>
+ *   <li>患者↔挂号归属经 patient_register_link 桥接表表达，不依赖 register.patient_id；</li>
+ *   <li>列表查询：先取 link 内 register_id，再查 register；未 link 的历史记录天然排除；</li>
+ *   <li>详情查询：先校验 link 存在，命中后才读 register 与派生表；不使用 card_number 兜底。</li>
  * </ul>
  */
 @Service
@@ -53,6 +54,7 @@ public class PatientPortalServiceImpl implements PatientPortalService {
 
     private final PatientMapper patientMapper;
     private final RegisterService registerService;
+    private final PatientRegisterLinkService patientRegisterLinkService;
     private final MedicalRecordMapper medicalRecordMapper;
     private final PrescriptionService prescriptionService;
     private final CheckRequestService checkRequestService;
@@ -95,9 +97,15 @@ public class PatientPortalServiceImpl implements PatientPortalService {
         int pNum = pageNum == null || pageNum < 1 ? 1 : pageNum;
         int pSize = pageSize == null || pageSize < 1 ? 10 : pageSize;
 
+        // 经桥接表取当前患者的 register_id；未 link 的历史记录天然排除
+        List<Integer> registerIds = patientRegisterLinkService.findRegisterIdsByPatient(pid);
+        if (registerIds.isEmpty()) {
+            return PageResult.of(0L, pNum, pSize, List.of());
+        }
+
         Page<Register> page = new Page<>(pNum, pSize);
         LambdaQueryWrapper<Register> wrapper = new LambdaQueryWrapper<Register>()
-                .eq(Register::getPatientId, pid)
+                .in(Register::getId, registerIds)
                 .orderByDesc(Register::getId);
         IPage<Register> result = registerService.page(page, wrapper);
 
@@ -114,13 +122,14 @@ public class PatientPortalServiceImpl implements PatientPortalService {
             throw new BusinessException(ErrorCode.NOT_FOUND);
         }
 
-        // 归属校验：单条 SQL 同时限定 id + patient_id，命中前不读任何关联表
-        LambdaQueryWrapper<Register> wrapper = new LambdaQueryWrapper<Register>()
-                .eq(Register::getId, registerId)
-                .eq(Register::getPatientId, pid);
-        Register register = registerService.getOne(wrapper);
+        // 归属校验：经桥接表校验 (patientId, registerId) 是否存在 link，命中前不读 register
+        if (!patientRegisterLinkService.existsLink(pid, registerId)) {
+            // 不属于当前患者的 registerId（含不存在/未 link）→ 404，不透露记录是否存在
+            throw new BusinessException(ErrorCode.NOT_FOUND);
+        }
+        Register register = registerService.getById(registerId);
         if (register == null) {
-            // 不属于当前患者的 registerId（含不存在）→ 404，不透露记录是否存在
+            // link 存在但 register 被物理删除的异常情况
             throw new BusinessException(ErrorCode.NOT_FOUND);
         }
 

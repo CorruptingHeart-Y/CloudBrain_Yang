@@ -223,8 +223,9 @@ class Pr3PatientIntegrationTest {
     @DisplayName("patientA 访问旧通用接口 register/prescription/check-request/inspection-request/disposal-request 均为 HTTP 403")
     void legacyEndpointsForbiddenForPatient() throws Exception {
         String token = login("patient01", "patient123");
+        // v2.0：PATIENT GET /register 已允许（只读本人 link），不再 403；
+        // 其余旧通用诊疗接口对 PATIENT 仍 403
         List<String> paths = List.of(
-                "/api/v1/register",
                 "/api/v1/prescription",
                 "/api/v1/check-request",
                 "/api/v1/inspection-request",
@@ -243,7 +244,7 @@ class Pr3PatientIntegrationTest {
     void xRoleSpoofingDoesNotGrant() throws Exception {
         String token = login("patient01", "patient123");
         // 旧通用接口：X-Role: ADMIN 仍 403（角色以 DB 为准）
-        ResponseEntity<String> legacy = get("/api/v1/register", token, "ADMIN");
+        ResponseEntity<String> legacy = get("/api/v1/prescription", token, "ADMIN");
         assertEquals(403, legacy.getStatusCode().value());
         // 他人 registerId：X-Role: ADMIN 仍 404（归属以 CurrentUser.patientId 为准）
         ResponseEntity<String> others = get("/api/v1/patient/records/3", token, "ADMIN");
