@@ -3,6 +3,8 @@ package com.neusoft.hospital.ai.controller;
 import com.neusoft.hospital.ai.dto.TriageConsultRequest;
 import com.neusoft.hospital.ai.dto.TriageResultDTO;
 import com.neusoft.hospital.ai.service.TriageService;
+import com.neusoft.hospital.auth.annotation.RequireRole;
+import com.neusoft.hospital.auth.enums.Role;
 import com.neusoft.hospital.common.Result;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -18,6 +20,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/v1/triage")
 @RequiredArgsConstructor
+@RequireRole({Role.ADMIN, Role.DOCTOR})
 public class TriageController {
 
     private final TriageService triageService;

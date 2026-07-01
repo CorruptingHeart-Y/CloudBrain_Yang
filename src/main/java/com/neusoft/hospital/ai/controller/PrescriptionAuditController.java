@@ -4,7 +4,10 @@ import com.neusoft.hospital.ai.dto.PrescriptionAuditRecordDTO;
 import com.neusoft.hospital.ai.dto.PrescriptionAuditResultDTO;
 import com.neusoft.hospital.ai.dto.PrescriptionCheckRequest;
 import com.neusoft.hospital.ai.service.PrescriptionAuditService;
+import com.neusoft.hospital.auth.annotation.RequireRole;
+import com.neusoft.hospital.auth.enums.Role;
 import com.neusoft.hospital.common.Result;
+import com.neusoft.hospital.service.RegisterOwnership;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -24,15 +27,18 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/v1/prescription/check")
 @RequiredArgsConstructor
+@RequireRole({Role.ADMIN, Role.DOCTOR})
 public class PrescriptionAuditController {
 
     private final PrescriptionAuditService prescriptionAuditService;
+    private final RegisterOwnership registerOwnership;
 
     @Operation(summary = "处方审核预览",
             description = "按挂号ID聚合处方明细交 AI 审核，返回风险等级/建议/相互作用/风险项；仅预览不落库。AI 不可用时返回 503 提示人工核对。",
             security = @SecurityRequirement(name = "Bearer"))
     @PostMapping
     public Result<PrescriptionAuditResultDTO> preview(@RequestBody @Valid PrescriptionCheckRequest request) {
+        registerOwnership.requireAccessibleRegister(request.getRegisterId());
         return Result.ok(prescriptionAuditService.audit(request.getRegisterId(), false));
     }
 
@@ -41,6 +47,7 @@ public class PrescriptionAuditController {
             security = @SecurityRequirement(name = "Bearer"))
     @PostMapping("/confirm")
     public Result<PrescriptionAuditResultDTO> confirm(@RequestBody @Valid PrescriptionCheckRequest request) {
+        registerOwnership.requireAccessibleRegister(request.getRegisterId());
         return Result.ok(prescriptionAuditService.audit(request.getRegisterId(), true));
     }
 

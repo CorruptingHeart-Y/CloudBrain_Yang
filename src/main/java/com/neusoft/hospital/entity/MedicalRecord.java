@@ -9,8 +9,8 @@ import lombok.Data;
 /**
  * 患者病历表（medical_record）。
  * <p>
- * v1.0 schema 已建表（register_id 唯一）；v2.0 身份 schema 仍维持 v1.0 建表不动。
- * source 标记内容来源：A=AI草稿生成，M=人工录入。
+ * v1.0 schema 已建表（register_id 唯一）；v2.0 零 ALTER 旧表约束：不新增列。
+ * 病历来源（A=AI/M=人工）外移至 medical_record_meta 新表，不修改本表结构。
  * 9 个临床字段由 AI 病历生成草稿填充或医生手写。
  */
 @Data
@@ -54,7 +54,4 @@ public class MedicalRecord {
 
     @Schema(description = "处理意见", example = "对症止痛，随访")
     private String cure;
-
-    @Schema(description = "病历来源：A=AI草稿生成，M=人工录入", example = "A")
-    private String source;
 }

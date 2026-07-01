@@ -12,9 +12,11 @@ import com.neusoft.hospital.ai.service.MedicalRecordService;
 import com.neusoft.hospital.entity.Disease;
 import com.neusoft.hospital.entity.MedicalRecord;
 import com.neusoft.hospital.entity.MedicalRecordDisease;
+import com.neusoft.hospital.entity.MedicalRecordMeta;
 import com.neusoft.hospital.entity.Register;
 import com.neusoft.hospital.mapper.MedicalRecordDiseaseMapper;
 import com.neusoft.hospital.mapper.MedicalRecordMapper;
+import com.neusoft.hospital.mapper.MedicalRecordMetaMapper;
 import com.neusoft.hospital.service.DiseaseService;
 import com.neusoft.hospital.service.RegisterService;
 import lombok.RequiredArgsConstructor;
@@ -25,6 +27,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
 
+import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -43,6 +46,7 @@ public class MedicalRecordServiceImpl implements MedicalRecordService {
 
     private final MedicalRecordClient medicalRecordClient;
     private final MedicalRecordMapper medicalRecordMapper;
+    private final MedicalRecordMetaMapper medicalRecordMetaMapper;
     private final MedicalRecordDiseaseMapper medicalRecordDiseaseMapper;
     private final RegisterService registerService;
     private final DiseaseService diseaseService;
@@ -79,17 +83,20 @@ public class MedicalRecordServiceImpl implements MedicalRecordService {
             record = new MedicalRecord();
         }
         BeanUtils.copyProperties(request, record);
-        record.setSource(StringUtils.hasText(request.getSource()) ? request.getSource() : SOURCE_MANUAL);
+        // source 不进 medical_record — 走 medical_record_meta 新表
         if (isNew) {
             medicalRecordMapper.insert(record);
         } else {
             medicalRecordMapper.updateById(record);
         }
 
-        // 2. 替换疾病关联：先删旧、再插新（去重 + 过滤 null）
+        // 2. upsert medical_record_meta（source + AI 快照）
+        upsertMeta(record.getId(), request.getSource(), null, null);
+
+        // 3. 替换疾病关联：先删旧、再插新（去重 + 过滤 null）
         replaceDiseaseLinks(record.getId(), request.getDiseaseIds());
 
-        // 3. 回读（含疾病）返前端
+        // 4. 回读（含疾病 + meta source）返前端
         return getByRegisterId(request.getRegisterId());
     }
 
@@ -103,8 +110,41 @@ public class MedicalRecordServiceImpl implements MedicalRecordService {
         }
         MedicalRecordDTO dto = new MedicalRecordDTO();
         BeanUtils.copyProperties(record, dto);
+        // source 从 meta 表取，无 meta 行默认 M
+        MedicalRecordMeta meta = medicalRecordMetaMapper.selectOne(
+                new LambdaQueryWrapper<MedicalRecordMeta>()
+                        .eq(MedicalRecordMeta::getMedicalRecordId, record.getId()));
+        dto.setSource(meta != null ? meta.getSource() : SOURCE_MANUAL);
         dto.setDiseases(loadDiseases(record.getId()));
         return dto;
+    }
+
+    // ---------- private helpers ----------
+
+    private void upsertMeta(Integer medicalRecordId, String source,
+                            String aiRequestSnapshot, String aiResultSnapshot) {
+        String finalSource = StringUtils.hasText(source) ? source : SOURCE_MANUAL;
+        MedicalRecordMeta meta = medicalRecordMetaMapper.selectOne(
+                new LambdaQueryWrapper<MedicalRecordMeta>()
+                        .eq(MedicalRecordMeta::getMedicalRecordId, medicalRecordId));
+        if (meta == null) {
+            meta = new MedicalRecordMeta();
+            meta.setMedicalRecordId(medicalRecordId);
+            meta.setSource(finalSource);
+            meta.setAiRequestSnapshot(aiRequestSnapshot);
+            meta.setAiResultSnapshot(aiResultSnapshot);
+            meta.setCreateTime(LocalDateTime.now());
+            medicalRecordMetaMapper.insert(meta);
+        } else {
+            meta.setSource(finalSource);
+            if (aiRequestSnapshot != null) {
+                meta.setAiRequestSnapshot(aiRequestSnapshot);
+            }
+            if (aiResultSnapshot != null) {
+                meta.setAiResultSnapshot(aiResultSnapshot);
+            }
+            medicalRecordMetaMapper.updateById(meta);
+        }
     }
 
     private void replaceDiseaseLinks(Integer medicalRecordId, List<Integer> diseaseIds) {
@@ -114,7 +154,6 @@ public class MedicalRecordServiceImpl implements MedicalRecordService {
         if (CollectionUtils.isEmpty(diseaseIds)) {
             return;
         }
-        // 去重 + 过滤 null，保留插入顺序
         LinkedHashSet<Integer> uniqueIds = diseaseIds.stream()
                 .filter(Objects::nonNull)
                 .collect(Collectors.toCollection(LinkedHashSet::new));
