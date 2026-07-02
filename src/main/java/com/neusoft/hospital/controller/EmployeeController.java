@@ -15,6 +15,7 @@ import com.neusoft.hospital.service.EmployeeService;
 import com.neusoft.hospital.service.RegistLevelService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -30,6 +31,7 @@ import java.util.List;
 @RequestMapping("/api/v1/employee")
 @RequiredArgsConstructor
 @RequireRole(Role.ADMIN)
+@SecurityRequirement(name = "Bearer")
 public class EmployeeController {
 
     private final EmployeeService employeeService;

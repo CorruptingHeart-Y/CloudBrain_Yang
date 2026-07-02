@@ -27,6 +27,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/v1/medical-record")
 @RequiredArgsConstructor
 @RequireRole({Role.ADMIN, Role.DOCTOR})
+@SecurityRequirement(name = "Bearer")
 public class MedicalRecordController {
 
     private final MedicalRecordService medicalRecordService;

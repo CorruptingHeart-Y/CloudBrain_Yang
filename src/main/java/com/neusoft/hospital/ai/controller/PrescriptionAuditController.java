@@ -28,6 +28,7 @@ import java.util.List;
 @RequestMapping("/api/v1/prescription/check")
 @RequiredArgsConstructor
 @RequireRole({Role.ADMIN, Role.DOCTOR})
+@SecurityRequirement(name = "Bearer")
 public class PrescriptionAuditController {
 
     private final PrescriptionAuditService prescriptionAuditService;
