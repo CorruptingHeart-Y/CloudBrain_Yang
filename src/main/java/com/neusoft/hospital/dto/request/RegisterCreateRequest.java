@@ -5,17 +5,12 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
-import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Data
 @Schema(description = "挂号创建请求")
 public class RegisterCreateRequest {
-
-    @NotBlank(message = "病历号不能为空")
-    @Schema(description = "病历号", example = "BL20240001", requiredMode = Schema.RequiredMode.REQUIRED)
-    private String caseNumber;
 
     @NotBlank(message = "真实姓名不能为空")
     @Schema(description = "真实姓名", example = "张三", requiredMode = Schema.RequiredMode.REQUIRED)
@@ -66,7 +61,4 @@ public class RegisterCreateRequest {
 
     @Schema(description = "挂号方式", example = "医保卡")
     private String registMethod;
-
-    @Schema(description = "挂号费用", example = "14.00")
-    private BigDecimal registMoney;
 }

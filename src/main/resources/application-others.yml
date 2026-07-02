@@ -16,3 +16,19 @@ spring:
       port: 6379
       password: hospital2024
       database: 0
+  rabbitmq:
+    host: 100.85.88.97
+    port: 5672
+    username: admin
+    password: admin2024
+    virtual-host: /
+    listener:
+      simple:
+        concurrency: 2
+        max-concurrency: 8
+        prefetch: 10
+        default-requeue-rejected: false
+        retry:
+          enabled: true
+          max-attempts: 2
+          initial-interval: 1000ms

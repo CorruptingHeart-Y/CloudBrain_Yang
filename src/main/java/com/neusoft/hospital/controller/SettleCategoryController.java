@@ -43,8 +43,9 @@ public class SettleCategoryController {
         return Result.ok(PageResult.of(result.getTotal(), pageNum, pageSize, responses));
     }
 
-    @Operation(summary = "查询全部结算类别(不分页)", description = "返回所有有效结算类别列表，用于下拉选择等场景")
+    @Operation(summary = "查询全部结算类别(不分页)", description = "返回所有有效结算类别列表，用于下拉选择等场景；三角色均可用（挂号表单/抢号页下拉）")
     @GetMapping("/all")
+    @RequireRole({Role.ADMIN, Role.DOCTOR, Role.PATIENT})
     public Result<List<SettleCategoryResponse>> listAll() {
         List<SettleCategory> list = settleCategoryService.listAll();
         List<SettleCategoryResponse> responses = list.stream().map(this::toResponse).toList();

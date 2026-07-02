@@ -10,8 +10,9 @@
 #   清空数据重建:   docker compose down -v && docker compose up -d
 #
 # 从 Windows 访问:
-#   MySQL:  localhost:3306
-#   Redis:  localhost:6379
+#   MySQL:     localhost:3306
+#   Redis:     localhost:6379
+#   RabbitMQ:  localhost:5672 (AMQP) / localhost:15672 (管理UI, admin/admin2024)
 # ============================================================
 
 services:
@@ -68,31 +69,55 @@ services:
     networks:
       - hospital-net
 
-  # ======================== AI 推理服务 (FastAPI + GLM) ========================
-  # 纯 AI 推理，不碰 MySQL/Redis；Spring Boot 通过 X-Internal-Key 调用。
-  # 运行前需准备 ./ai-service/.env（GLM_API_KEY、INTERNAL_KEY 等），见 ai-service/.env.example
-  ai-service:
-    build: ./ai-service
-    container_name: hospital-ai-service
+  # ======================== RabbitMQ 3 (抢号异步削峰) ========================
+  # 账号: admin / admin2024  管理UI: http://localhost:15672
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: hospital-rabbitmq
     restart: unless-stopped
     ports:
-      - "8000:8000"
-    env_file:
-      - ./ai-service/.env
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: admin
+      RABBITMQ_DEFAULT_PASS: admin2024
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/health').status==200 else 1)"]
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
       interval: 15s
-      timeout: 5s
+      timeout: 10s
       retries: 5
     networks:
       - hospital-net
 
-# ======================== 数据卷 ========================
+#  # ======================== AI 推理服务 (FastAPI + GLM) ========================
+#  # 纯 AI 推理，不碰 MySQL/Redis；Spring Boot 通过 X-Internal-Key 调用。
+#  # 运行前需准备 ./ai-service/.env（GLM_API_KEY、INTERNAL_KEY 等），见 ai-service/.env.example
+#  ai-service:
+#    build: ./ai-service
+#    container_name: hospital-ai-service
+#    restart: unless-stopped
+#    ports:
+#      - "8000:8000"
+#    env_file:
+#      - ./ai-service/.env
+#    healthcheck:
+#      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/health').status==200 else 1)"]
+#      interval: 15s
+#      timeout: 5s
+#      retries: 5
+#    networks:
+#      - hospital-net
+
+# ======================== 数据卷 ============================
 volumes:
   mysql-data:
     name: hospital-mysql-data
   redis-data:
     name: hospital-redis-data
+  rabbitmq-data:
+    name: hospital-rabbitmq-data
 
 # ======================== 网络 ========================
 networks:

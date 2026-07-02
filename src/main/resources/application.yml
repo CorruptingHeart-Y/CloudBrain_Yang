@@ -54,3 +54,14 @@ hospital:
     prescription-check-path: /ai/prescription-check
     medical-record-path: /ai/medical-record
     timeout-seconds: 30
+  # 抢号（秒杀）相关配置
+  registration:
+    # RabbitMQ 交换机/队列/路由键
+    exchange: regist.exchange
+    queue: regist.grab.queue
+    routing-key: regist.grab
+    dlx-exchange: regist.dlx.exchange
+    dlx-queue: regist.dlx.queue
+    dlx-routing-key: regist.dlx
+    # Redis 号源库存 key 前缀：regist:stock:{emp}:{date}:{noon}
+    stock-key-prefix: regist:stock

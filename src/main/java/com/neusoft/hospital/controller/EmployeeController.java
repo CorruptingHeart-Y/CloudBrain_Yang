@@ -51,8 +51,9 @@ public class EmployeeController {
         return Result.ok(PageResult.of(result.getTotal(), pageNum, pageSize, responses));
     }
 
-    @Operation(summary = "按科室查询员工列表", description = "返回指定科室下的所有有效员工，用于选择医生下拉框等场景")
+    @Operation(summary = "按科室查询员工列表", description = "返回指定科室下的所有有效员工，用于选择医生下拉框等场景；三角色均可用（挂号表单/抢号页下拉）")
     @GetMapping("/dept/{deptId}")
+    @RequireRole({Role.ADMIN, Role.DOCTOR, Role.PATIENT})
     public Result<List<EmployeeResponse>> listByDept(
             @Parameter(description = "科室ID", example = "1", required = true) @PathVariable Integer deptId) {
         List<Employee> list = employeeService.listByDeptId(deptId);

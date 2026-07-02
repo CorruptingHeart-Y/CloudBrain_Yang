@@ -39,6 +39,12 @@
             <artifactId>spring-boot-starter-data-redis</artifactId>
         </dependency>
 
+        <!-- RabbitMQ：抢号异步削峰 -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-amqp</artifactId>
+        </dependency>
+
         <!-- MyBatis-Plus (Spring Boot 3 starter) -->
         <dependency>
             <groupId>com.baomidou</groupId>

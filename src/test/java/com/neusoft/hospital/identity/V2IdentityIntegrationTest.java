@@ -156,4 +156,33 @@ class V2IdentityIntegrationTest {
         assertEquals(200, get("/api/v1/register/1", t).getStatusCode().value());
         assertEquals(200, get("/api/v1/register/10", t).getStatusCode().value());
     }
+
+    // ---------- 11-12. 挂号创建加固：case_number 服务端生成 / regist_money 按级别推导 / visit_state=1 ----------
+
+    @Test
+    @DisplayName("ADMIN 建号：服务端生成 case_number、regist_money 取级别费用、visit_state=1")
+    void adminCreateRegisterGeneratesCaseNumberAndFee() throws Exception {
+        String t = login("admin", "admin123");
+        ResponseEntity<String> r = post("/api/v1/register", t, Map.of(
+                "realName", "测试新增", "gender", "男",
+                "deptmentId", 1, "registLevelId", 1, "settleCategoryId", 1));
+        assertEquals(200, r.getStatusCode().value(), "建号应200: " + r.getBody());
+        JsonNode data = mapper.readTree(r.getBody()).get("data");
+        assertNotNull(data.get("id"), "应回填 id");
+        String caseNumber = data.get("caseNumber").asText();
+        assertTrue(caseNumber.matches("BL\\d{16}"), "case_number 应为 BL+16位数字，实际: " + caseNumber);
+        assertEquals(10.00, data.get("registMoney").asDouble(), "regist_money 应取 regist_level.fee=10.00");
+        assertEquals(1, data.get("visitState").asInt(), "建号即 visit_state=1");
+        assertEquals("普通号", data.get("registLevelName").asText(), "应回填级别名称");
+    }
+
+    @Test
+    @DisplayName("建号 registLevelId 不存在 → 真实 404")
+    void createRegisterRejectsUnknownRegistLevel() throws Exception {
+        String t = login("admin", "admin123");
+        ResponseEntity<String> r = post("/api/v1/register", t, Map.of(
+                "realName", "测试", "gender", "男",
+                "deptmentId", 1, "registLevelId", 999, "settleCategoryId", 1));
+        assertEquals(404, r.getStatusCode().value(), "未知挂号级别应 404: " + r.getBody());
+    }
 }

@@ -17,7 +17,6 @@ import com.neusoft.hospital.entity.SettleCategory;
 import com.neusoft.hospital.auth.context.CurrentUser;
 import com.neusoft.hospital.service.DepartmentService;
 import com.neusoft.hospital.service.EmployeeService;
-import com.neusoft.hospital.service.PatientRegisterLinkService;
 import com.neusoft.hospital.service.RegisterOwnership;
 import com.neusoft.hospital.service.RegisterService;
 import com.neusoft.hospital.service.RegistLevelService;
@@ -49,7 +48,6 @@ public class RegisterController {
     private final RegistLevelService registLevelService;
     private final SettleCategoryService settleCategoryService;
     private final RegisterOwnership registerOwnership;
-    private final PatientRegisterLinkService patientRegisterLinkService;
 
     @Operation(summary = "分页查询挂号列表", description = "DOCTOR 仅返回本人接诊记录；PATIENT 仅返回桥接表内 link 到本人的记录；ADMIN 不限")
     @GetMapping
@@ -97,19 +95,16 @@ public class RegisterController {
         return Result.ok(toResponse(register));
     }
 
-    @Operation(summary = "新增挂号", description = "DOCTOR 仅能为本人接诊建号；ADMIN 可指定医生；PATIENT 403。建号后身份匹配则自动建 link")
+    @Operation(summary = "新增挂号(现场)", description = "DOCTOR 仅能为本人接诊建号；ADMIN 可指定医生；PATIENT 403。已放号则扣号源(满号→409)，未放号放行。服务端生成 case_number、按级别推导 regist_money、置 visit_state=1。返回完整挂号信息")
     @PostMapping
-    public Result<Void> create(@RequestBody @Valid RegisterCreateRequest request) {
-        Register register = new Register();
-        BeanUtils.copyProperties(request, register);
+    public Result<RegisterResponse> create(@RequestBody @Valid RegisterCreateRequest request) {
         // DOCTOR 不得通过 body 伪造 employeeId 为他人接诊；强制覆盖为当前医生
+        Integer employeeId = request.getEmployeeId();
         if (CurrentUser.getAuthUser() != null && CurrentUser.getAuthUser().getRole() == Role.DOCTOR) {
-            register.setEmployeeId(CurrentUser.getAuthUser().getEmployeeId());
+            employeeId = CurrentUser.getAuthUser().getEmployeeId();
         }
-        registerService.save(register);
-        // v2.0：身份(card_number+real_name+gender+birthdate)与某 patient 严格匹配则自动建 link
-        patientRegisterLinkService.linkIfMatched(register);
-        return Result.ok();
+        Register register = registerService.createRegisterWithQuota(request, employeeId);
+        return Result.ok(toResponse(register));
     }
 
     @Operation(summary = "修改挂号信息", description = "根据ID更新挂号信息；DOCTOR 仅限本人接诊的挂号，他人/不存在 → 404")
