@@ -57,6 +57,7 @@ public class MedicalRecordController {
     @GetMapping
     public Result<MedicalRecordDTO> getByRegisterId(
             @Parameter(description = "挂号ID", example = "14", required = true) @RequestParam Integer registerId) {
+        registerOwnership.requireAccessibleRegister(registerId);
         return Result.ok(medicalRecordService.getByRegisterId(registerId));
     }
 }

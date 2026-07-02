@@ -49,3 +49,31 @@ INSERT INTO `check_request`
 VALUES
   (20,10,1,'医生B检查','头部','2026-06-11 10:00:00',2,2,'2026-06-11 14:00:00','正常','0','医生B')
 ON DUPLICATE KEY UPDATE `register_id`=VALUES(`register_id`), `check_info`=VALUES(`check_info`), `check_state`=VALUES(`check_state`);
+
+-- ---------- AI read-side records for register ownership regression ----------
+INSERT INTO `medical_record`
+  (`id`,`register_id`,`readme`,`present`,`present_treat`,`history`,`allergy`,`physique`,`proposal`,`careful`,`diagnosis`,`cure`)
+VALUES
+  (10,10,'doctorB AI readme','doctorB present','doctorB present treat','doctorB history','doctorB allergy','doctorB physique','doctorB proposal','doctorB careful','doctorB diagnosis','doctorB cure')
+ON DUPLICATE KEY UPDATE
+  `register_id`=VALUES(`register_id`), `readme`=VALUES(`readme`), `diagnosis`=VALUES(`diagnosis`), `cure`=VALUES(`cure`);
+
+INSERT INTO `medical_record_meta`
+  (`id`,`medical_record_id`,`source`,`ai_request_snapshot`,`ai_result_snapshot`,`create_time`)
+VALUES
+  (1,1,'A','{"registerId":1}','{"source":"own"}',NOW()),
+  (10,10,'A','{"registerId":10}','{"source":"other"}',NOW())
+ON DUPLICATE KEY UPDATE
+  `medical_record_id`=VALUES(`medical_record_id`), `source`=VALUES(`source`),
+  `ai_request_snapshot`=VALUES(`ai_request_snapshot`), `ai_result_snapshot`=VALUES(`ai_result_snapshot`),
+  `create_time`=VALUES(`create_time`);
+
+INSERT INTO `prescription_audit_record`
+  (`id`,`register_id`,`request_snapshot`,`result_json`,`risk_level`,`auditor_employee_id`,`creation_time`)
+VALUES
+  (1,1,'{"registerId":1}','{"riskLevel":"low"}','low',1,NOW()),
+  (10,10,'{"registerId":10}','{"riskLevel":"high"}','high',2,NOW())
+ON DUPLICATE KEY UPDATE
+  `register_id`=VALUES(`register_id`), `request_snapshot`=VALUES(`request_snapshot`),
+  `result_json`=VALUES(`result_json`), `risk_level`=VALUES(`risk_level`),
+  `auditor_employee_id`=VALUES(`auditor_employee_id`), `creation_time`=VALUES(`creation_time`);

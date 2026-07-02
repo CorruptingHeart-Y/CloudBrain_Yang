@@ -243,6 +243,28 @@ class Pr4PermissionIntegrationTest {
         assertEquals(404, get("/api/v1/check-request/register/10", token).getStatusCode().value());
     }
 
+
+    @Test
+    @DisplayName("DOCTOR A 查询 AI 病历/处方审核记录：自己 200，他人 register 404")
+    void doctorQueryAiReadRecordsScopedByRegisterOwnership() throws Exception {
+        String token = login("doctor01", "doctor123");
+
+        ResponseEntity<String> ownMedicalRecord = get("/api/v1/medical-record?registerId=1", token);
+        assertEquals(200, ownMedicalRecord.getStatusCode().value());
+        assertEquals(1, body(ownMedicalRecord).get("data").get("registerId").asInt());
+
+        ResponseEntity<String> othersMedicalRecord = get("/api/v1/medical-record?registerId=10", token);
+        assertEquals(404, othersMedicalRecord.getStatusCode().value(), "AI medical-record GET must hide other doctor's register");
+        assertEquals(404, body(othersMedicalRecord).get("code").asInt());
+
+        ResponseEntity<String> ownAuditRecords = get("/api/v1/prescription/check/record?registerId=1", token);
+        assertEquals(200, ownAuditRecords.getStatusCode().value());
+        assertEquals(1, body(ownAuditRecords).get("data").get(0).get("registerId").asInt());
+
+        ResponseEntity<String> othersAuditRecords = get("/api/v1/prescription/check/record?registerId=10", token);
+        assertEquals(404, othersAuditRecords.getStatusCode().value(), "AI prescription audit record GET must hide other doctor's register");
+        assertEquals(404, body(othersAuditRecords).get("code").asInt());
+    }
     // ---------- 8. ADMIN 跨医生访问与操作 ----------
 
     @Test

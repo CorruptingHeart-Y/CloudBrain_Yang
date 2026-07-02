@@ -58,6 +58,7 @@ public class PrescriptionAuditController {
     @GetMapping("/record")
     public Result<List<PrescriptionAuditRecordDTO>> listByRegisterId(
             @Parameter(description = "挂号ID", example = "14", required = true) @RequestParam Integer registerId) {
+        registerOwnership.requireAccessibleRegister(registerId);
         return Result.ok(prescriptionAuditService.listByRegisterId(registerId));
     }
 }
