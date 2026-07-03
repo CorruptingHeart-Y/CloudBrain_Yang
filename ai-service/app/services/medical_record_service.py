@@ -1,7 +1,11 @@
 """病历生成推理：拼装对话+患者 prompt → 调 GLM 结构化输出 9 临床字段。"""
 
+import logging
+
 from app.clients.glm_client import AiInferenceError, GlmClient
 from app.schemas.medical_record import MedicalRecordDraft, MedicalRecordRequest
+
+logger = logging.getLogger(__name__)
 
 SYSTEM_PROMPT = """你是医院门诊病历书写助手。任务：根据医生提供的医患对话文本，提取并归纳生成结构化门诊病历草稿，返回 JSON。
 字段含义（键名严格一致）：
@@ -32,4 +36,14 @@ def _build_user_content(req: MedicalRecordRequest) -> str:
 
 def generate(req: MedicalRecordRequest, glm: GlmClient) -> MedicalRecordDraft:
     """返回病历草稿；GLM 失败时抛 AiInferenceError 由路由降级。"""
-    return glm.structured_complete(SYSTEM_PROMPT, _build_user_content(req), MedicalRecordDraft)
+    logger.info(
+        "病历生成请求 | 挂号ID=%d | 对话长度=%d",
+        req.register_id,
+        len(req.dialogue),
+    )
+    return glm.structured_complete(
+        SYSTEM_PROMPT,
+        _build_user_content(req),
+        MedicalRecordDraft,
+        task_name="medical-record",
+    )

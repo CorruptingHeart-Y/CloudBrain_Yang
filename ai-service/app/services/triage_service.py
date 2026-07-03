@@ -1,9 +1,12 @@
 """诊前分诊推理：拼装候选集 prompt → 调 GLM 结构化输出。"""
 
 import json
+import logging
 
 from app.clients.glm_client import AiInferenceError, GlmClient
 from app.schemas.triage import TriageRequest, TriageResult
+
+logger = logging.getLogger(__name__)
 
 SYSTEM_PROMPT = """你是医院诊前分诊助手。任务：根据患者主诉，从给定的候选科室和候选医生中匹配并排序，返回 JSON。
 约束：
@@ -40,4 +43,12 @@ def _build_user_content(req: TriageRequest) -> str:
 
 def triage(req: TriageRequest, glm: GlmClient) -> TriageResult:
     """返回结构化分诊结果；GLM 失败时抛 AiInferenceError 由路由降级。"""
-    return glm.structured_complete(SYSTEM_PROMPT, _build_user_content(req), TriageResult)
+    logger.info(
+        "分诊推理请求 | 主诉=%s | 候选科室数=%d | 候选医生数=%d",
+        req.chief_complaint,
+        len(req.departments),
+        len(req.doctors),
+    )
+    return glm.structured_complete(
+        SYSTEM_PROMPT, _build_user_content(req), TriageResult, task_name="triage"
+    )

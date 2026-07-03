@@ -14,7 +14,6 @@ import com.neusoft.hospital.service.RegisterService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
-import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,12 +22,10 @@ import java.time.LocalDateTime;
 
 /**
  * 抢号消费者：MySQL 兜底扣减 + 落库 + 票据状态机。
- * <p>仅非 test profile 加载（测试无需 RabbitMQ broker）。
  * <p>幂等：ticket 非 PENDING 直接跳过。业务失败(满号/未放号) → refund Redis + FAILED + ack。
  */
 @Slf4j
 @Component
-@Profile("!test")
 @RequiredArgsConstructor
 public class RegistrationGrabConsumer {
 

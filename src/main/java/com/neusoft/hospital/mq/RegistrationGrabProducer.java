@@ -4,13 +4,16 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
 /**
  * 抢号消息生产者：Redis 扣减成功后投递 ticketId 到主队列。
+ * <p>test profile 不加载（无 RabbitMQ broker）。
  */
 @Slf4j
 @Component
+@Profile("!test")
 @RequiredArgsConstructor
 public class RegistrationGrabProducer {
 

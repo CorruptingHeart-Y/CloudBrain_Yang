@@ -7,6 +7,8 @@ import com.neusoft.hospital.mapper.RegistrationTicketMapper;
 import com.neusoft.hospital.service.RegistrationTicketService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -60,6 +62,7 @@ public class RegistrationTicketServiceImpl extends ServiceImpl<RegistrationTicke
     }
 
     @Override
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void markFailed(Integer ticketId, String reason) {
         RegistrationTicket t = new RegistrationTicket();
         t.setId(ticketId);

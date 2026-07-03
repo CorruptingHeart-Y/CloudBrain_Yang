@@ -20,7 +20,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/v1/triage")
 @RequiredArgsConstructor
-@RequireRole({Role.ADMIN, Role.DOCTOR})
+@RequireRole({Role.ADMIN, Role.DOCTOR, Role.PATIENT})
 @SecurityRequirement(name = "Bearer")
 public class TriageController {
 

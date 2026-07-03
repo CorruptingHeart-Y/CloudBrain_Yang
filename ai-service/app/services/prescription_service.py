@@ -1,9 +1,12 @@
 """处方审核推理：拼装药品+患者 prompt → 调 GLM 结构化输出。"""
 
 import json
+import logging
 
 from app.clients.glm_client import AiInferenceError, GlmClient
 from app.schemas.prescription import PrescriptionCheckRequest, PrescriptionCheckResult
+
+logger = logging.getLogger(__name__)
 
 SYSTEM_PROMPT = """你是医院门诊处方审核药师。任务：根据患者信息与处方药品列表，审核用药合理性，返回 JSON。
 审核维度：用法用量是否合理、是否存在药物相互作用、是否存在禁忌/过敏/剂量风险。
@@ -40,4 +43,14 @@ def _build_user_content(req: PrescriptionCheckRequest) -> str:
 
 def check(req: PrescriptionCheckRequest, glm: GlmClient) -> PrescriptionCheckResult:
     """返回结构化审核结果；GLM 失败时抛 AiInferenceError 由路由降级。"""
-    return glm.structured_complete(SYSTEM_PROMPT, _build_user_content(req), PrescriptionCheckResult)
+    logger.info(
+        "处方审核请求 | 挂号ID=%d | 药品种数=%d",
+        req.register_id,
+        len(req.drugs),
+    )
+    return glm.structured_complete(
+        SYSTEM_PROMPT,
+        _build_user_content(req),
+        PrescriptionCheckResult,
+        task_name="prescription-check",
+    )

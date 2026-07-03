@@ -8,6 +8,7 @@
 
 import json
 import logging
+import time
 from typing import Type, TypeVar
 
 from pydantic import BaseModel, ValidationError
@@ -46,7 +47,11 @@ class GlmClient:
         return self._client is not None
 
     def structured_complete(
-        self, system_prompt: str, user_content: str, schema_model: Type[T]
+        self,
+        system_prompt: str,
+        user_content: str,
+        schema_model: Type[T],
+        task_name: str = "unknown",
     ) -> T:
         """调用 GLM 并将返回校验为 schema_model。失败抛 AiInferenceError。"""
         if not self.available:
@@ -56,7 +61,18 @@ class GlmClient:
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_content},
         ]
+
+        logger.info(
+            "AI 调用开始 | 任务=%s | 模型=%s | system_prompt_len=%d | user_content_len=%d | 最大重试=%d",
+            task_name,
+            self._settings.glm_model,
+            len(system_prompt),
+            len(user_content),
+            self._settings.ai_max_retries,
+        )
+
         last_err: Exception | None = None
+        t_start = time.monotonic()
         for attempt in range(self._settings.ai_max_retries + 1):
             try:
                 resp = self._client.chat.completions.create(
@@ -65,15 +81,62 @@ class GlmClient:
                     response_format={"type": "json_object"},
                     temperature=self._settings.ai_temperature,
                 )
+                elapsed_ms = (time.monotonic() - t_start) * 1000
+
                 content = resp.choices[0].message.content
+                usage = resp.usage
+                usage_str = (
+                    f"prompt_tokens={usage.prompt_tokens} "
+                    f"completion_tokens={usage.completion_tokens} "
+                    f"total_tokens={usage.total_tokens}"
+                    if usage
+                    else "token_usage=N/A"
+                )
+
+                logger.info(
+                    "AI 调用成功 | 任务=%s | 耗时=%.0fms | 尝试=%d/%d | %s",
+                    task_name,
+                    elapsed_ms,
+                    attempt + 1,
+                    self._settings.ai_max_retries + 1,
+                    usage_str,
+                )
+
                 data = json.loads(content)
-                return schema_model.model_validate(data)
+                result = schema_model.model_validate(data)
+                logger.info(
+                    "AI 结果校验通过 | 任务=%s | schema=%s",
+                    task_name,
+                    schema_model.__name__,
+                )
+                return result
             except (ValidationError, json.JSONDecodeError) as e:
                 last_err = e
-                logger.warning("结构化解析失败（第 %d 次）: %s", attempt + 1, e)
+                logger.warning(
+                    "AI 结构化解析失败 | 任务=%s | 尝试=%d/%d | 错误=%s",
+                    task_name,
+                    attempt + 1,
+                    self._settings.ai_max_retries + 1,
+                    e,
+                )
             except Exception as e:
                 last_err = e
-                logger.warning("GLM 调用异常（第 %d 次）: %s", attempt + 1, e)
+                logger.warning(
+                    "AI 调用异常 | 任务=%s | 尝试=%d/%d | 错误=%s",
+                    task_name,
+                    attempt + 1,
+                    self._settings.ai_max_retries + 1,
+                    e,
+                )
+
+        elapsed_ms = (time.monotonic() - t_start) * 1000
+        logger.error(
+            "AI 调用最终失败 | 任务=%s | 总耗时=%.0fms | 总尝试=%d | 最后错误=%s",
+            task_name,
+            elapsed_ms,
+            self._settings.ai_max_retries + 1,
+            last_err,
+        )
         raise AiInferenceError(f"AI 推理失败: {last_err}")
 
 
