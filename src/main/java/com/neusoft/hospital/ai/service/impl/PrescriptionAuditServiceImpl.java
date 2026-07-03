@@ -1,6 +1,7 @@
 package com.neusoft.hospital.ai.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.neusoft.hospital.ai.client.PrescriptionAuditClient;
@@ -25,6 +26,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.CollectionUtils;
 
 import java.time.LocalDateTime;
@@ -47,6 +49,7 @@ public class PrescriptionAuditServiceImpl implements PrescriptionAuditService {
     private final PrescriptionAuditRecordMapper prescriptionAuditRecordMapper;
     private final ObjectMapper objectMapper;
 
+    @Transactional(rollbackFor = Exception.class)
     @Override
     public PrescriptionAuditResultDTO audit(Integer registerId, boolean persist) {
         // 1. 聚合该挂号下全部处方明细行
@@ -78,9 +81,10 @@ public class PrescriptionAuditServiceImpl implements PrescriptionAuditService {
         // 6. 富化结果（补药名）
         PrescriptionAuditResultDTO result = enrich(aiResponse, drugMap);
 
-        // 7. 按需落 prescription_audit_record
+        // 7. 按需落 prescription_audit_record，并联动更新处方状态
         if (persist) {
             saveRecord(aiRequest, aiResponse, registerId);
+            batchUpdateDrugState(registerId);
         }
         return result;
     }
@@ -202,6 +206,19 @@ public class PrescriptionAuditServiceImpl implements PrescriptionAuditService {
         record.setAuditorEmployeeId(CurrentUser.require());
         record.setCreationTime(LocalDateTime.now());
         prescriptionAuditRecordMapper.insert(record);
+    }
+
+    /**
+     * 确认开方后，将该挂号下所有「待发药」处方行批量变更为「已发药」。
+     * 幂等：仅更新 drug_state = '待发药' 的行，已发药的不受影响。
+     */
+    private void batchUpdateDrugState(Integer registerId) {
+        LambdaUpdateWrapper<Prescription> updateWrapper = new LambdaUpdateWrapper<>();
+        updateWrapper.eq(Prescription::getRegisterId, registerId)
+                .eq(Prescription::getDrugState, "待发药")
+                .set(Prescription::getDrugState, "已发药");
+        boolean updated = prescriptionService.update(updateWrapper);
+        log.info("确认开方批量更新处方状态 | registerId={} | updated={}", registerId, updated);
     }
 
     private String toJson(Object obj) {
