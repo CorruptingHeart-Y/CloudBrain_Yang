@@ -51,6 +51,7 @@ public interface DoctorDailyQuotaMapper extends BaseMapper<DoctorDailyQuota> {
     @Update("UPDATE doctor_daily_quota SET remaining = remaining - 1 " +
             "WHERE employee_id = #{employeeId} AND quota_date = #{quotaDate} " +
             "AND noon = #{noon} AND remaining > 0 AND delmark = 1")
+    //最后一层mysql兜底, "and remaing>0" 确认不会超卖.
     int deductIfAvailable(@Param("employeeId") Integer employeeId,
                           @Param("quotaDate") java.time.LocalDate quotaDate,
                           @Param("noon") String noon);

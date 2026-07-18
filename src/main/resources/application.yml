@@ -65,3 +65,5 @@ hospital:
     dlx-routing-key: regist.dlx
     # Redis 号源库存 key 前缀：regist:stock:{emp}:{date}:{noon}
     stock-key-prefix: regist:stock
+    # 号源缓存生命周期：覆盖当天与次日抢号窗口，避免冷号源长期占用 Redis
+    stock-ttl-hours: 48

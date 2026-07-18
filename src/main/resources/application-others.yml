@@ -16,12 +16,25 @@ spring:
       port: 6379
       password: hospital2024
       database: 0
+      # ---------- Lettuce 连接池加固 ----------
+      lettuce:
+        pool:
+          enabled: true
+          max-active: 16
+          max-idle: 8
+          min-idle: 4
+          max-wait: 3000ms
+          time-between-eviction-runs: 30s
+      timeout: 5000ms
+      connect-timeout: 3000ms
   rabbitmq:
     host: 100.85.88.97
     port: 5672
     username: admin
     password: admin2024
     virtual-host: /
+    connection-timeout: 5000ms
+    requested-heartbeat: 10s
     listener:
       simple:
         concurrency: 2

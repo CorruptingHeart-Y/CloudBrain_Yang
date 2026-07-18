@@ -67,6 +67,9 @@ error.txt
 AI接入的业务需求.md
 # 注：docs/ 不再忽略——deployment-runbook.md、前端对接文档等已在版本控制中维护
 # (若需保留某份本地文档，请在文件名前列出到上方)
+docs/*面试*.md
+docs/*答辩*.md
+docs/*个人报告*.md
 
 
 # Claude Code

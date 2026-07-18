@@ -42,7 +42,7 @@ public class PatientRegistrationController {
             @RequestParam(defaultValue = "7") Integer days) {
         return Result.ok(doctorDailyQuotaService.listAvailableForPatient(days));
     }
-
+    //核心并发接口
     @Operation(summary = "抢号", description = "提交后立即返回 PENDING 票据；MQ 异步落库。一人一号(每半日)，重复抢号幂等返回既有票据")
     @PostMapping("/grab")
     public Result<RegistrationGrabResponse> grab(@RequestBody @Valid RegistrationGrabRequest request) {

@@ -15,12 +15,32 @@ spring:
       port: 6379
       password: hospital2024
       database: 0
+      # ---------- Lettuce 连接池加固 ----------
+      # 配合 docker/redis/redis.conf timeout=0 使用，防止拿到死连接导致 Connection reset
+      lettuce:
+        pool:
+          enabled: true
+          max-active: 16
+          max-idle: 8
+          min-idle: 4
+          # 连接池等待可用连接的最大时长
+          max-wait: 3000ms
+          # 驱逐检查间隔 — 定期清理死连接
+          time-between-eviction-runs: 30s
+      # 命令超时 — 防止 hang 住
+      timeout: 5000ms
+      # 连接超时
+      connect-timeout: 3000ms
   rabbitmq:
     host: localhost
     port: 5672
     username: admin
     password: admin2024
     virtual-host: /
+    # 连接超时
+    connection-timeout: 5000ms
+    # 心跳：每 10 秒发一次，保持连接活跃 + 快速发现断连
+    requested-heartbeat: 10s
     listener:
       simple:
         concurrency: 2

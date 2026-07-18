@@ -39,6 +39,12 @@
             <artifactId>spring-boot-starter-data-redis</artifactId>
         </dependency>
 
+        <!-- Lettuce 连接池（生产级 Redis 连接管理，解决 Connection reset 问题） -->
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-pool2</artifactId>
+        </dependency>
+
         <!-- RabbitMQ：抢号异步削峰 -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

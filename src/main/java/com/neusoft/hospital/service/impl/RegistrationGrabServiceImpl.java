@@ -15,6 +15,7 @@ import com.neusoft.hospital.service.RegistrationTicketService;
 import com.neusoft.hospital.service.RegisterService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.amqp.AmqpException;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 
@@ -30,9 +31,10 @@ public class RegistrationGrabServiceImpl implements RegistrationGrabService {
     private final QuotaService quotaService;
     private final RegistrationGrabProducer producer;
     private final RegisterService registerService;
-
+  //核心并发抢号业务方法
     @Override
     public RegistrationGrabResponse grab(RegistrationGrabRequest request) {
+        //从ThreadLocal必须要能拿到patientId,否则就是非法请求
         Integer patientId = CurrentUser.requireAuthUser().getPatientId();
         if (patientId == null) {
             throw new BusinessException(ErrorCode.FORBIDDEN.getCode(), "当前账号未绑定患者档案，无法抢号");
@@ -57,6 +59,9 @@ public class RegistrationGrabServiceImpl implements RegistrationGrabService {
         // ---- 建 PENDING 票据 ----
         RegistrationTicket ticket;
         try {
+            //执行的是insert语句, 就算同一个患者的两个几乎同时到达的请求同时穿透了前面的幂等判断,
+            //在数据库执行insert语句也会被行锁强行同步, 只有一个线程能insert成功,另一个线程会因为试图插入具有唯一索引的一行数据而抛出
+            //DuplicateKeyException(唯一键冲突异常)而导致插入失败,这里再做了一层幂等处理.
             ticket = ticketService.createPending(patientId, request.getEmployeeId(),
                     request.getVisitDate(), request.getNoon(),
                     request.getRegistLevelId(), request.getSettleCategoryId());
@@ -82,8 +87,18 @@ public class RegistrationGrabServiceImpl implements RegistrationGrabService {
         }
 
         // ---- 扣减成功 → 投递 MQ 异步落库 ----
-        producer.send(ticket.getId());
+        // 消息包含  生成的票据的id,根据这个id,消费者消息可以异步消费这条消息, 即执行真正的mysql落库.
+        try {
+            producer.send(ticket.getId());
+        } catch (AmqpException e) {
+            // MQ 不可用时，Redis 已经预扣成功；这里必须补回库存并终止票据，避免 PENDING 长时间悬挂。
+            quotaService.refundRedis(request.getEmployeeId(), request.getVisitDate(), request.getNoon());
+            ticketService.markFailed(ticket.getId(), "消息队列不可用，抢号失败");
+            log.error("抢号消息投递失败 ticketId={}", ticket.getId(), e);
+            throw new BusinessException(ErrorCode.SYSTEM_ERROR.getCode(), "消息队列暂不可用，请稍后重试");
+        }
 
+        //消息投递成功后,就可以直接给前端返回 正在处理的消息. 不会阻塞前端的请求, 提升用户体验.
         RegistrationGrabResponse resp = new RegistrationGrabResponse();
         resp.setTicketNo(ticket.getTicketNo());
         resp.setStatus(RegistrationTicket.STATUS_PENDING);

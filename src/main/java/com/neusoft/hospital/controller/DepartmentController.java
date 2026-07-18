@@ -18,6 +18,7 @@ import lombok.RequiredArgsConstructor;
 import com.neusoft.hospital.auth.annotation.RequireRole;
 import com.neusoft.hospital.auth.enums.Role;
 import org.springframework.beans.BeanUtils;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;

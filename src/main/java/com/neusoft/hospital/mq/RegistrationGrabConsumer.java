@@ -37,13 +37,16 @@ public class RegistrationGrabConsumer {
 
     @RabbitListener(queues = "${hospital.registration.queue:regist.grab.queue}")
     @Transactional(rollbackFor = Exception.class)
+    // 消费者线程消费消息的逻辑
     public void consume(Integer ticketId) {
         RegistrationTicket ticket = ticketService.getById(ticketId);
         if (ticket == null) {
+            //可能是过期消息, 该票据已经被删除了.
             log.warn("抢号票据不存在 ticketId={}，跳过", ticketId);
             return;
         }
         if (!RegistrationTicket.STATUS_PENDING.equals(ticket.getStatus())) {
+            //再做一层幂等处理
             log.info("抢号票据已处理 ticketId={} status={}，幂等跳过", ticketId, ticket.getStatus());
             return;
         }
@@ -53,6 +56,7 @@ public class RegistrationGrabConsumer {
             boolean deducted = quotaService.deductDbOrThrow(
                     ticket.getEmployeeId(), ticket.getVisitDate(), ticket.getNoon());
             if (!deducted) {
+                //返回false说明扣减失败, 说明mysql里根本没有号源行.
                 // 未放号（Redis 有库存但 DB 无号源行，数据不一致）→ 失败回补
                 quotaService.refundRedis(ticket.getEmployeeId(), ticket.getVisitDate(), ticket.getNoon());
                 ticketService.markFailed(ticketId, "未放号");
@@ -60,14 +64,16 @@ public class RegistrationGrabConsumer {
             }
 
             // ---- 组装挂号并落库 ----
+            //插入挂号记录
             RegisterCreateRequest req = buildRequest(ticket);
             Register register = registerService.createRegister(req, ticket.getEmployeeId());
-
+                       //标记抢号票据状态为Success.
             ticketService.markSuccess(ticketId, register.getId());
             log.info("抢号成功 ticketId={} registerId={} caseNumber={}",
                     ticketId, register.getId(), register.getCaseNumber());
 
         } catch (BusinessException e) {
+            //捕获到满号异常,标记抢票票据的状态为 FAILED,并写明失败原因为 "号满了"
             // 满号(409) 等：回补 Redis + 标记失败
             quotaService.refundRedis(ticket.getEmployeeId(), ticket.getVisitDate(), ticket.getNoon());
             ticketService.markFailed(ticketId, e.getMessage());

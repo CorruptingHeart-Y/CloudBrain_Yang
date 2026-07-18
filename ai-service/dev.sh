@@ -21,7 +21,8 @@ PORT=8000
 
 echo "==> [1/3] 检查并清理占用 ${PORT} 端口的进程..."
 # netstat -ano 输出：Proto  Local  Foreign  State  PID；取最后一列 PID
-PIDS=$(netstat -ano | grep ":${PORT}" | awk '{print $5}' | sort -u | grep -v '^0$' || true)
+# 注意：用 [[:space:]] 限定端口号后必须跟空白，避免匹配到 IPv6 地址中恰好包含 :8000 的远程地址
+PIDS=$(netstat -ano | grep -E ":${PORT}[[:space:]]" | awk '{print $5}' | sort -u | grep -v '^0$' || true)
 if [ -n "$PIDS" ]; then
   for pid in $PIDS; do
     echo "    终止 PID ${pid}"
@@ -33,9 +34,9 @@ fi
 
 echo "==> [2/3] 复查端口..."
 sleep 1
-if netstat -ano | grep -q ":${PORT}"; then
+if netstat -ano | grep -E -q ":${PORT}[[:space:]]"; then
   echo "!! 端口 ${PORT} 仍被占用："
-  netstat -ano | grep ":${PORT}"
+  netstat -ano | grep -E ":${PORT}[[:space:]]"
   echo "!! 请手动 taskkill //F //PID <PID> 后重试"
   exit 1
 fi

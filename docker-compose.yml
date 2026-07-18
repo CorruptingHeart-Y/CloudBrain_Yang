@@ -22,6 +22,8 @@ services:
     image: mysql:8.0
     container_name: hospital-mysql
     restart: unless-stopped
+    # 防 WSL2 OOM killer — 预留够用但不过量
+    mem_limit: 768m
     ports:
       - "3306:3306"
     environment:
@@ -53,6 +55,8 @@ services:
     image: redis:7-alpine
     container_name: hospital-redis
     restart: unless-stopped
+    # 防 WSL2 OOM killer — Redis 很轻量，128m 足够
+    mem_limit: 256m
     ports:
       - "6379:6379"
     command: redis-server /usr/local/etc/redis/redis.conf
@@ -75,6 +79,8 @@ services:
     image: rabbitmq:3-management
     container_name: hospital-rabbitmq
     restart: unless-stopped
+    # 防 WSL2 OOM killer — RabbitMQ 含管理插件，需 512m+
+    mem_limit: 768m
     ports:
       - "5672:5672"
       - "15672:15672"
