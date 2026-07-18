@@ -11,6 +11,7 @@ RUN uv sync --no-dev
 
 # 复制应用代码
 COPY app ./app
+COPY knowledge ./knowledge
 
 EXPOSE 8000
 

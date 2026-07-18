@@ -8,6 +8,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.clients.glm_client import get_glm_client
 from app.config import get_settings
+from app.rag.rag_service import get_rag_service
 from app.routers import medical_record as medical_record_router
 from app.routers import prescription as prescription_router
 from app.routers import triage as triage_router
@@ -37,9 +38,38 @@ class InternalKeyMiddleware(BaseHTTPMiddleware):
 app.add_middleware(InternalKeyMiddleware)
 
 
+@app.on_event("startup")
+def startup():
+    get_rag_service()
+
+
 @app.get("/health")
 def health():
-    return {"status": "up", "glm_configured": get_glm_client().available}
+    rag = get_rag_service()
+    return {
+        "status": "up",
+        "glm_configured": get_glm_client().available,
+        "rag_enabled": rag.enabled,
+        "rag_embedding_available": rag.embedding_available,
+        "rag_vector_ready": rag.vector_ready,
+        "rag_chunk_count": rag.chunk_count,
+        "rag_knowledge_dir": rag.knowledge_dir,
+        "rag_vector_store_dir": rag.vector_store_dir,
+    }
+
+
+@app.post("/ai/rag/reload")
+def reload_rag():
+    rag = get_rag_service()
+    rag.reload()
+    return {
+        "rag_enabled": rag.enabled,
+        "rag_embedding_available": rag.embedding_available,
+        "rag_vector_ready": rag.vector_ready,
+        "rag_chunk_count": rag.chunk_count,
+        "rag_knowledge_dir": rag.knowledge_dir,
+        "rag_vector_store_dir": rag.vector_store_dir,
+    }
 
 
 app.include_router(triage_router.router, prefix="/ai")

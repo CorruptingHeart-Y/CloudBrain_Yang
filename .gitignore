@@ -44,13 +44,13 @@ node_modules/
 vendor/
 __pycache__/
 *.pyc
+ai-service/vector_store/
 
 # Environment
 .env
 .env.local
 .env.*.local
-# 例外：ai-service/.env 作为团队共享配置纳入版本控制（敏感值留空，密钥用环境变量注入）
-!ai-service/.env
+ai-service/.env
 
 # Docker data (local only)
 docker/mysql/data/
