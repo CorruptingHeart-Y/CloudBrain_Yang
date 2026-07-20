@@ -67,3 +67,8 @@ hospital:
     stock-key-prefix: regist:stock
     # 号源缓存生命周期：覆盖当天与次日抢号窗口，避免冷号源长期占用 Redis
     stock-ttl-hours: 48
+    # Add random jitter to avoid many stock keys expiring at the same time
+    stock-ttl-jitter-minutes: 30
+    # BloomFilter capacity for released quota combinations loaded at startup
+    bloom-expected-insertions: 100000
+    bloom-fpp: 0.01

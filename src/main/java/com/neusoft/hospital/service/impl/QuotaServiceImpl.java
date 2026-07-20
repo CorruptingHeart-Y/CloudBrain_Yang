@@ -1,5 +1,6 @@
 package com.neusoft.hospital.service.impl;
 
+import com.neusoft.hospital.cache.QuotaBloomFilter;
 import com.neusoft.hospital.common.BusinessException;
 import com.neusoft.hospital.common.ErrorCode;
 import com.neusoft.hospital.entity.DoctorDailyQuota;
@@ -19,70 +20,117 @@ import org.springframework.stereotype.Service;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.UUID;
+import java.util.concurrent.ThreadLocalRandom;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class QuotaServiceImpl implements QuotaService {
 
+    private static final String RELEASE_LOCK_SCRIPT =
+            "if redis.call('GET', KEYS[1]) == ARGV[1] then " +
+                    "return redis.call('DEL', KEYS[1]) " +
+                    "else return 0 end";
+
     private final StringRedisTemplate redis;
     private final DoctorDailyQuotaService quotaService;
     private final DoctorDailyQuotaMapper quotaMapper;
+    private final QuotaBloomFilter quotaBloomFilter;
 
     @Value("${hospital.registration.stock-key-prefix:regist:stock}")
     private String stockKeyPrefix;
+
     @Value("${hospital.registration.stock-ttl-hours:48}")
     private long stockTtlHours;
 
+    @Value("${hospital.registration.stock-ttl-jitter-minutes:30}")
+    private long stockTtlJitterMinutes;
+
     private DefaultRedisScript<Long> deductScript;
+    private DefaultRedisScript<Long> releaseLockScript;
 
     @PostConstruct
     void initScript() {
         deductScript = new DefaultRedisScript<>();
         deductScript.setScriptSource(new ResourceScriptSource(new ClassPathResource("lua/deduct_stock.lua")));
         deductScript.setResultType(Long.class);
+
+        releaseLockScript = new DefaultRedisScript<>();
+        releaseLockScript.setScriptText(RELEASE_LOCK_SCRIPT);
+        releaseLockScript.setResultType(Long.class);
     }
 
     private String key(Integer employeeId, LocalDate date, String noon) {
         return stockKeyPrefix + ":" + employeeId + ":" + date + ":" + noon;
     }
-    //执行lua脚本的并判断是否在redis扣减成功.
+
+    private String lockKey(Integer employeeId, LocalDate date, String noon) {
+        return stockKeyPrefix + ":lock:" + employeeId + ":" + date + ":" + noon;
+    }
+
     @Override
     public int tryDeduct(Integer employeeId, LocalDate quotaDate, String noon) {
-        String k = key(employeeId, quotaDate, noon);
+        if (!quotaBloomFilter.mightContain(employeeId, quotaDate, noon)) {
+            return -1;
+        }
 
+        String k = key(employeeId, quotaDate, noon);
         Long r = redis.execute(deductScript, List.of(k));
         if (r == null) {
             return -1;
         }
+
         int result = r.intValue();
         if (result == -1) {
-            // 库存 key 未初始化：lazy seed 后重试一次
-
-            // 返回-1,可能是因为数据库有但是redis没有缓存, 尝试加载到redis,如果加载成功就再做一次lua脚本原子扣减.
-            if (seedIfPresent(employeeId, quotaDate, noon)) {
+            if (rebuildStockCacheWithMutex(employeeId, quotaDate, noon)) {
                 Long r2 = redis.execute(deductScript, List.of(k));
                 return r2 == null ? -1 : r2.intValue();
             }
-            //如果数据库页没有,说明压根就没号直接返回-1
-            return -1; // DB 也无号源行 → 未放号
+            return -1;
         }
         return result;
     }
 
-    /** DB 有号源行则 SET Redis 库存并返回 true；无则 false。 */
     private boolean seedIfPresent(Integer employeeId, LocalDate quotaDate, String noon) {
         DoctorDailyQuota q = quotaService.getByEmpDateNoon(employeeId, quotaDate, noon);
         if (q == null) {
             return false;
         }
+
+        quotaBloomFilter.put(employeeId, quotaDate, noon);
         String k = key(employeeId, quotaDate, noon);
         Boolean seeded = redis.opsForValue().setIfAbsent(
-                k, String.valueOf(q.getRemaining()), Duration.ofHours(stockTtlHours));
+                k, String.valueOf(q.getRemaining()), stockTtlWithJitter());
         if (Boolean.FALSE.equals(seeded)) {
-            log.debug("Redis 号源已由其他请求完成懒加载 key={}", k);
+            log.debug("Redis stock cache already rebuilt by another request, key={}", k);
         }
         return true;
+    }
+
+    private boolean rebuildStockCacheWithMutex(Integer employeeId, LocalDate quotaDate, String noon) {
+        String lockKey = lockKey(employeeId, quotaDate, noon);
+        String lockValue = UUID.randomUUID().toString();
+
+        Boolean locked = redis.opsForValue().setIfAbsent(lockKey, lockValue, Duration.ofSeconds(5));
+        if (Boolean.TRUE.equals(locked)) {
+            try {
+                return seedIfPresent(employeeId, quotaDate, noon);
+            } finally {
+                releaseLockSafely(lockKey, lockValue);
+            }
+        }
+
+        sleepQuietly(30);
+        return true;
+    }
+
+    private void releaseLockSafely(String lockKey, String lockValue) {
+        try {
+            redis.execute(releaseLockScript, List.of(lockKey), lockValue);
+        } catch (Exception e) {
+            log.warn("release stock rebuild lock failed key={}: {}", lockKey, e.getMessage());
+        }
     }
 
     @Override
@@ -90,9 +138,9 @@ public class QuotaServiceImpl implements QuotaService {
         try {
             String k = key(employeeId, quotaDate, noon);
             redis.opsForValue().increment(k);
-            redis.expire(k, Duration.ofHours(stockTtlHours));
+            redis.expire(k, stockTtlWithJitter());
         } catch (Exception e) {
-            log.warn("refundRedis 失败 emp={} date={} noon={}: {}", employeeId, quotaDate, noon, e.getMessage());
+            log.warn("refundRedis failed emp={} date={} noon={}: {}", employeeId, quotaDate, noon, e.getMessage());
         }
     }
 
@@ -102,10 +150,12 @@ public class QuotaServiceImpl implements QuotaService {
         if (q == null) {
             return;
         }
+
+        quotaBloomFilter.put(employeeId, quotaDate, noon);
         redis.opsForValue().set(
                 key(employeeId, quotaDate, noon),
                 String.valueOf(q.getRemaining()),
-                Duration.ofHours(stockTtlHours));
+                stockTtlWithJitter());
     }
 
     @Override
@@ -116,29 +166,43 @@ public class QuotaServiceImpl implements QuotaService {
                 redis.opsForValue().decrement(k);
             }
         } catch (Exception e) {
-            log.warn("decrRedisIfPresent 失败 emp={} date={} noon={}: {}", employeeId, quotaDate, noon, e.getMessage());
+            log.warn("decrRedisIfPresent failed emp={} date={} noon={}: {}", employeeId, quotaDate, noon, e.getMessage());
         }
     }
 
     @Override
-    //真实的落库业务方法.
     public boolean deductDbOrThrow(Integer employeeId, LocalDate quotaDate, String noon) {
         int affected = quotaMapper.deductIfAvailable(employeeId, quotaDate, noon);
         if (affected == 1) {
-            //确实mysql落库成功.
             return true;
         }
-        // affected=0：可能无号源行(未放号) 或 remaining=0(满号)
+
         DoctorDailyQuota q = quotaService.getByEmpDateNoon(employeeId, quotaDate, noon);
         if (q == null) {
-            return false; // 未放号，现场路径放行
+            return false;
         }
-        // 已放号但满号 → 409
-        throw new BusinessException(ErrorCode.CONFLICT.getCode(), "该号源已约满");
+        throw new BusinessException(ErrorCode.CONFLICT.getCode(), "\u8be5\u53f7\u6e90\u5df2\u7ea6\u6ee1");
     }
 
     @Override
     public DoctorDailyQuota getQuota(Integer employeeId, LocalDate quotaDate, String noon) {
         return quotaService.getByEmpDateNoon(employeeId, quotaDate, noon);
+    }
+
+    private Duration stockTtlWithJitter() {
+        long safeTtlHours = Math.max(stockTtlHours, 1);
+        long safeJitterMinutes = Math.max(stockTtlJitterMinutes, 0);
+        long jitterMinutes = safeJitterMinutes == 0
+                ? 0
+                : ThreadLocalRandom.current().nextLong(safeJitterMinutes + 1);
+        return Duration.ofHours(safeTtlHours).plusMinutes(jitterMinutes);
+    }
+
+    private void sleepQuietly(long millis) {
+        try {
+            Thread.sleep(millis);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
     }
 }
